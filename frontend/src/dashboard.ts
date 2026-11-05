@@ -4,7 +4,7 @@
  * the full page hub: one tab per puzzle site, its totals and puzzle grid, and bulk download tools
  */
 
-import { api } from './api.ts';
+import { api, onUnauthorized } from './api.ts';
 import { clear, h, replace } from './dom.ts';
 import { createPuzzleGrid } from './grid.ts';
 import { settings } from './settings.ts';
@@ -139,10 +139,36 @@ export const createDashboard = (root: HTMLElement, openEditor: (puzzle: PuzzleRe
         descriptionsLabel.style.display = shown()?.capabilities.fetchDescription ? '' : 'none';
     };
 
+    let needsToken = false;
+    onUnauthorized(() => {
+        if (needsToken || getState().hub) return;
+        needsToken = true;
+        renderTotals();
+    });
+
     const renderTotals = () => {
         const { hub, dashboardSource } = getState();
         const source = shown();
-        if (!hub) return replace(totals, 'loading…');
+        if (!hub) {
+            if (!needsToken) return replace(totals, 'loading…');
+            // a fresh browser (or a new address) has no api token yet: ask for it right here
+            const input = h('input', { type: 'password', autocomplete: 'off', placeholder: 'api token' });
+            const save = async () => {
+                settings.set({ token: input.value.trim() });
+                needsToken = false;
+                renderTotals();
+                await actions.loadHub();
+                refreshStatus();
+            };
+            input.addEventListener('keydown', (event) => event.key === 'Enter' && save());
+            return replace(
+                totals,
+                h('span', { className: 'dim' }, settings.get().token ? 'that api token was not accepted. ' : 'this hub is private: enter its api token. '),
+                input,
+                ' ',
+                h('button', { className: 'link', onClick: save }, 'unlock'),
+            );
+        }
         if (!source) return replace(totals, h('span', { className: 'dim' }, 'no puzzle repositories are mounted yet: list them in hub.json (see the readme).'));
         const here = starsOf(source.id);
         const everywhere = hub.sources.reduce((sum, entry) => sum + starsOf(entry.id).stars, 0);

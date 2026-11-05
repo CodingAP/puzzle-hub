@@ -7,7 +7,7 @@
 import { api } from '../api.ts';
 import { formatDate, h, replace } from '../dom.ts';
 import { DEFAULT_SETTINGS, type Settings, settings } from '../settings.ts';
-import { actions, getState, subscribe } from '../state.ts';
+import { actions, firstPuzzle, getState, subscribe } from '../state.ts';
 import type { CredentialInfo, SourceInfo } from '../types.ts';
 import { THEMES } from '../themes.ts';
 import type { PanelDefinition } from '../workspace.ts';
@@ -106,7 +106,8 @@ export const settingsPanel: PanelDefinition = {
                 if (field.key === 'token' || field.key === 'apiBase') {
                     checkHealth();
                     actions.loadHub().then(() => {
-                        const last = getState().puzzle ?? settings.get().lastPuzzle;
+                        const first = getState().hub?.sources[0];
+                        const last = getState().puzzle ?? settings.get().lastPuzzle ?? (first ? firstPuzzle(first.id) : null);
                         if (last) actions.selectPuzzle(last, { force: true });
                     });
                 }

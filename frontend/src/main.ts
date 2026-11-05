@@ -208,6 +208,9 @@ const boot = async () => {
         if (puzzle && location.hash !== puzzleHash(puzzle)) history.replaceState(null, '', puzzleHash(puzzle));
     }, ['puzzle']);
 
+    // what a route means depends on the mounted sources, so look again once they are known (e.g. after the token is entered)
+    subscribe(() => applyRoute(), ['hub']);
+
     globalThis.addEventListener('hashchange', () => applyRoute());
     smallScreen.addEventListener('change', () => applyRoute());
 
