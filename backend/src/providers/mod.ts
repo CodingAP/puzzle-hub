@@ -73,6 +73,8 @@ export interface Provider {
     /** inputs keyed by part; key 0 is the single shared input when perPartInput is false */
     fetchInputs?(context: ProviderContext, group: string, puzzle: number): Promise<Record<number, string>>;
     fetchDescription?(context: ProviderContext, group: string, puzzle: number): Promise<FetchedDescription | null>;
+    /** answers the site has already accepted for this account, keyed by part (so stars earned elsewhere show up) */
+    fetchSolved?(context: ProviderContext, group: string, puzzle: number): Promise<Record<number, string>>;
     submit?(context: ProviderContext, group: string, puzzle: number, part: number, answer: string): Promise<SubmitResult>;
 }
 

@@ -2,20 +2,20 @@
  * backend/src/providers/everybody-codes.ts
  *
  * https://everybody.codes: events (by year) and stories, quests with three parts, each part with its own input.
- * titles, puzzle text and inputs are aes encrypted; the keys come from the api once a part is unlocked.
+ * titles, puzzle text and inputs are aes encrypted files on the site; the keys (and the answers it has accepted)
+ * come from the api once a part is unlocked.
  */
 
 import { parseHtml } from '../html.ts';
 import { toMarkdown } from '../htmlmd.ts';
-import { MissingCredentialError, type Provider, type ProviderContext, range } from './mod.ts';
+import { type GroupInfo, MissingCredentialError, type Provider, type ProviderContext, range, type SubmitResult } from './mod.ts';
 
 const BASE = 'https://everybody.codes';
-const CDN = 'https://everybody-codes.b-cdn.net/assets';
+const API = 'https://api.everybody.codes';
+const ASSETS = `${BASE}/assets`;
 const FIRST_EVENT = 2024;
-const STORIES = [1, 2];
-/** probing stops here even if the cdn keeps answering */
-const MAX_QUESTS = 40;
-const MAX_STORIES = 30;
+/** what exists when the site cannot be asked (see discover) */
+const STORIES = [1, 2, 3, 4];
 
 /** "event2024" -> { kind: 'event', id: '2024' }; "story1" -> { kind: 'story', id: '1' } */
 const parseGroup = (group: string): { kind: 'event' | 'story'; id: string } => {
@@ -39,25 +39,59 @@ const decrypt = async (encrypted: string, key: string): Promise<string> => {
     return new TextDecoder().decode(data);
 };
 
-interface Keys {
+/** what the api knows about one quest for the logged in user: a key per unlocked part, the answer per solved part */
+interface QuestState {
     key1?: string;
     key2?: string;
     key3?: string;
+    answer1?: string;
+    answer2?: string;
+    answer3?: string;
 }
 
-const fetchKeys = async (context: ProviderContext, id: string, puzzle: number): Promise<Keys> => {
+/** an api call that must be logged in; the site answers with a web page instead of json when the cookie is not accepted */
+const apiJson = async <T>(context: ProviderContext, path: string, init: RequestInit = {}): Promise<T> => {
     if (!context.session) throw new MissingCredentialError(everybodyCodes);
-    const response = await fetch(`${BASE}/api/event/${id}/quest/${puzzle}`, { headers: headers(context) });
-    if (!response.ok) throw new Error(`could not fetch keys for quest ${puzzle}: ${response.status} ${response.statusText}`);
+    const response = await fetch(`${API}/${path}`, { ...init, headers: { ...headers(context), ...(init.headers ?? {}) } });
+    const text = await response.text();
     try {
-        return await response.json();
-    } catch {
-        throw new Error('everybody.codes did not return keys (the session cookie is probably expired or wrong)');
+        const parsed = JSON.parse(text);
+        if (!response.ok) throw new Error(parsed?.message ?? parsed?.error ?? `${response.status} ${response.statusText}`);
+        return parsed as T;
+    } catch (error) {
+        if (error instanceof SyntaxError) {
+            throw new Error(`everybody.codes did not answer ${path} with data (${response.status}): the cookie is probably expired or wrong`);
+        }
+        throw error;
     }
 };
 
-const fetchJson = async (url: string): Promise<Record<string, string> | null> => {
-    const response = await fetch(url);
+// one quest needs its state for the title, the inputs, the text and the answers: ask once, not four times
+const questCache = new Map<string, { at: number; state: Promise<QuestState> }>();
+const fetchQuest = (context: ProviderContext, id: string, puzzle: number): Promise<QuestState> => {
+    const key = `${context.session.slice(-12)}/${id}/${puzzle}`;
+    const cached = questCache.get(key);
+    if (cached && Date.now() - cached.at < 15_000) return cached.state;
+    const state = apiJson<QuestState>(context, `event/${id}/quest/${puzzle}`);
+    questCache.set(key, { at: Date.now(), state });
+    state.catch(() => questCache.delete(key));
+    return state;
+};
+
+// the seed picks which input set an account gets; it never changes
+const seeds = new Map<string, number>();
+const fetchSeed = async (context: ProviderContext): Promise<number> => {
+    const known = seeds.get(context.session);
+    if (known !== undefined) return known;
+    const { seed } = await apiJson<{ seed?: number }>(context, 'user/me');
+    if (typeof seed !== 'number') throw new Error('everybody.codes did not return your profile (the cookie is probably expired or wrong)');
+    seeds.set(context.session, seed);
+    return seed;
+};
+
+/** an encrypted asset file; null when it does not exist (the site serves its web page for unknown paths) */
+const fetchAsset = async (context: ProviderContext, path: string): Promise<Record<string, string> | null> => {
+    const response = await fetch(`${ASSETS}/${path}`, { headers: { 'User-Agent': context.userAgent } });
     if (!response.ok) return null;
     try {
         return await response.json();
@@ -66,17 +100,7 @@ const fetchJson = async (url: string): Promise<Record<string, string> | null> =>
     }
 };
 
-/** how many quests of an event / story have been published (their text is on the cdn, encrypted) */
-const countQuests = async (context: ProviderContext, id: number): Promise<number> => {
-    let count = 0;
-    while (count < MAX_QUESTS) {
-        const response = await fetch(`${CDN}/${id}/${count + 1}/description.json`, { method: 'HEAD', headers: { 'User-Agent': context.userAgent } });
-        if (response.status === 404) break;
-        if (!response.ok) throw new Error(`the everybody.codes cdn answered ${response.status}`);
-        count++;
-    }
-    return count;
-};
+const parts = [1, 2, 3] as const;
 
 export const everybodyCodes: Provider = {
     id: 'everybody-codes',
@@ -96,17 +120,48 @@ export const everybodyCodes: Provider = {
         ];
     },
 
+    /**
+     * the site's own app carries the calendar: every event and story with the moment each quest opens. reading it
+     * gives exactly the quests that are out, and when to look again for the next one.
+     */
     async discover(context, now = new Date()) {
-        const years = range(FIRST_EVENT, now.getFullYear());
-        const events = await Promise.all(years.map((year) => countQuests(context, year)));
-        const groups = years.map((year, index) => ({ id: `event${year}`, label: `Event ${year}`, puzzles: range(1, events[index]) }));
-        for (let story = 1; story <= MAX_STORIES; story++) {
-            const quests = await countQuests(context, story);
-            if (quests === 0) break;
-            groups.push({ id: `story${story}`, label: `Story ${story}`, puzzles: range(1, quests) });
+        const request = { headers: { 'User-Agent': context.userAgent } };
+        const page = await (await fetch(BASE, request)).text();
+        const script = page.match(/src="\/?(main\.[^"]+\.js)"/)?.[1];
+        if (!script) return null;
+        const code = await (await fetch(`${BASE}/${script}`, request)).text();
+
+        const events: GroupInfo[] = [];
+        const stories: GroupInfo[] = [];
+        let next = Infinity;
+        // each entry has an image named after it (svg/events2025.svg, svg/stories2.svg) and, later in the same object, its quests
+        const images = [...code.matchAll(/image:"svg\/([a-z]+)(\d+)\.svg"/g)];
+        const calendars = [...code.matchAll(/quests:\{([^}]*)\}/g)];
+        for (const [index, calendar] of calendars.entries()) {
+            const previous = index > 0 ? calendars[index - 1].index! : -1;
+            const image = images.findLast((candidate) => candidate.index! < calendar.index! && candidate.index! > previous);
+            if (!image || (image[1] !== 'events' && image[1] !== 'stories')) continue;
+            const match = [calendar[0], image[1], image[2], calendar[1]];
+            const released: number[] = [];
+            for (const [, quest, opens] of match[3].matchAll(/(\d+):([\d.e]+)/g)) {
+                const time = Number(opens);
+                if (time <= now.getTime()) released.push(Number(quest));
+                else next = Math.min(next, time);
+            }
+            if (!released.length) continue;
+            const event = match[1] === 'events';
+            (event ? events : stories).push({
+                id: `${event ? 'event' : 'story'}${match[2]}`,
+                label: `${event ? 'Event' : 'Story'} ${match[2]}`,
+                puzzles: released.sort((a, b) => a - b),
+            });
         }
-        const published = groups.filter((group) => group.puzzles.length > 0);
-        return published.length ? { groups: published } : null;
+        const order = (a: GroupInfo, b: GroupInfo) => Number(a.id.replace(/\D/g, '')) - Number(b.id.replace(/\D/g, ''));
+        const groups = [...events.sort(order), ...stories.sort(order)];
+        if (!groups.length) return null;
+        // look again a minute after the next quest opens (never more often than every five minutes)
+        const untilNext = next - now.getTime() + 60_000;
+        return { groups, maxAgeMs: Number.isFinite(untilNext) ? Math.max(5 * 60_000, Math.min(untilNext, 24 * 60 * 60_000)) : undefined };
     },
 
     puzzleUrl(group, puzzle) {
@@ -121,50 +176,78 @@ export const everybodyCodes: Provider = {
 
     async fetchTitle(context, group, puzzle) {
         const { id } = parseGroup(group);
-        const keys = await fetchKeys(context, id, puzzle);
-        const description = await fetchJson(`${CDN}/${id}/${puzzle}/description.json`);
-        if (!keys.key1 || !description?.title) return null;
-        return (await decrypt(description.title, keys.key1)).trim();
+        const quest = await fetchQuest(context, id, puzzle);
+        const description = await fetchAsset(context, `${id}/${puzzle}/description.json`);
+        if (!quest.key1 || !description?.title) return null;
+        return (await decrypt(description.title, quest.key1)).trim();
     },
 
     async fetchInputs(context, group, puzzle) {
         const { id } = parseGroup(group);
-        const me = await fetch(`${BASE}/api/user/me`, { headers: headers(context) });
-        if (!context.session || !me.ok) throw new MissingCredentialError(everybodyCodes);
-        let seed: number;
-        try {
-            seed = (await me.json()).seed;
-        } catch {
-            throw new Error('everybody.codes did not return your profile (the session cookie is probably expired or wrong)');
-        }
-        const keys = await fetchKeys(context, id, puzzle);
-        const inputs = await fetchJson(`${CDN}/${id}/${puzzle}/input/${seed}.json`);
+        const seed = await fetchSeed(context);
+        const quest = await fetchQuest(context, id, puzzle);
+        const inputs = await fetchAsset(context, `${id}/${puzzle}/input/${seed}.json`);
         if (!inputs) throw new Error(`no inputs published for quest ${puzzle} of ${group}`);
 
         const result: Record<number, string> = {};
-        for (const part of [1, 2, 3] as const) {
-            const key = keys[`key${part}`];
+        for (const part of parts) {
+            const key = quest[`key${part}`];
             if (key && inputs[String(part)]) result[part] = await decrypt(inputs[String(part)], key);
         }
-        if (!Object.keys(result).length) throw new Error(`no part of quest ${puzzle} is unlocked yet`);
+        if (!Object.keys(result).length) throw new Error(`no part of quest ${puzzle} is unlocked for you yet (it opens on the site first)`);
         return result;
     },
 
     async fetchDescription(context, group, puzzle) {
         const { id } = parseGroup(group);
-        const keys = await fetchKeys(context, id, puzzle);
-        const description = await fetchJson(`${CDN}/${id}/${puzzle}/description.json`);
-        if (!description || !keys.key1) return null;
+        const quest = await fetchQuest(context, id, puzzle);
+        const description = await fetchAsset(context, `${id}/${puzzle}/description.json`);
+        if (!description || !quest.key1) return null;
 
         let markdown = '';
-        let parts = 0;
-        for (const part of [1, 2, 3] as const) {
-            const key = keys[`key${part}`];
+        let count = 0;
+        for (const part of parts) {
+            const key = quest[`key${part}`];
             if (!key || !description[String(part)]) continue;
             const html = await decrypt(description[String(part)], key);
             markdown += `## Part ${part}\n\n${toMarkdown(parseHtml(html), BASE).trim()}\n\n`;
-            parts++;
+            count++;
         }
-        return parts ? { markdown: markdown.trim() + '\n', parts } : null;
+        return count ? { markdown: markdown.trim() + '\n', parts: count } : null;
+    },
+
+    /** the answers the site has already accepted for this account */
+    async fetchSolved(context, group, puzzle) {
+        const { id } = parseGroup(group);
+        const quest = await fetchQuest(context, id, puzzle);
+        const solved: Record<number, string> = {};
+        for (const part of parts) {
+            const answer = quest[`answer${part}`];
+            if (answer !== undefined && answer !== null && String(answer) !== '') solved[part] = String(answer);
+        }
+        return solved;
+    },
+
+    async submit(context, group, puzzle, part, answer): Promise<SubmitResult> {
+        const { id } = parseGroup(group);
+        // a part the site already holds an answer for is settled without submitting again
+        const accepted = (await fetchQuest(context, id, puzzle))[`answer${part}` as keyof QuestState];
+        if (accepted !== undefined && accepted !== null && String(accepted) !== '') return String(accepted) === answer ? 'correct' : 'already-solved';
+
+        let verdict: { correct?: boolean; penaltyLeftMs?: number };
+        try {
+            verdict = await apiJson(context, `event/${id}/quest/${puzzle}/part/${part}/answer`, {
+                method: 'POST',
+                headers: { 'content-type': 'application/json' },
+                body: JSON.stringify({ answer }),
+            });
+        } catch (error) {
+            if (error instanceof MissingCredentialError) throw error;
+            return 'unknown';
+        }
+        questCache.clear(); // the next look at the quest should see the new part
+        if (verdict.correct === true) return 'correct';
+        if (verdict.correct === false) return 'incorrect';
+        return (verdict.penaltyLeftMs ?? 0) > 0 ? 'too-soon' : 'unknown';
     },
 };

@@ -126,11 +126,11 @@ A provider is the one site-specific piece: how puzzles are grouped, and (optiona
 | provider | groups | parts | downloads | submit |
 | --- | --- | --- | --- | --- |
 | `advent-of-code` | years, as many days as the calendar shows | 2, one input | title, input, text | yes |
-| `everybody-codes` | events (20 quests) and stories (3 quests) | 3, an input per part | title, inputs, text (decrypted with your keys) | check on the site, then record |
+| `everybody-codes` | events (20 quests) and stories (3 quests), as listed in the site's own calendar | 3, an input per part | title, inputs, text (decrypted with your keys), answers already accepted | yes |
 | `aquaq` | one list of challenges, numbered from 0 | 1 | input; title and text best effort | check on the site, then record |
 | `manual` | whatever the manifest's `groups` say | manifest's `parts` | nothing: paste inputs in the Input panel | record only |
 
-How many puzzles a site has is not hard-coded: `advent-of-code` reads each year's public calendar page (finished years once, the running event hourly, and the day that unlocks at midnight US Eastern shows up by the clock alone), `aquaq` reads the public challenge list (which also supplies the titles) and `everybody-codes` checks which quests are on its CDN. The answer is cached in the data folder and refreshed about once a day (`deno task cli discover --source=<id>` forces it); the built-in numbers are only a fallback, and a manifest's `groups` or folders that already exist on disk always count too.
+How many puzzles a site has is not hard-coded: `advent-of-code` reads each year's public calendar page (finished years once, the running event hourly, and the day that unlocks at midnight US Eastern shows up by the clock alone), `aquaq` reads the public challenge list (which also supplies the titles) and `everybody-codes` reads the calendar its web app ships (so a quest appears a minute after it opens). The answer is cached in the data folder and refreshed about once a day (`deno task cli discover --source=<id>` forces it); the built-in numbers are only a fallback, and a manifest's `groups` or folders that already exist on disk always count too.
 
 To add a site, write a `Provider` (see [backend/src/providers/mod.ts](backend/src/providers/mod.ts) for the interface and [advent-of-code.ts](backend/src/providers/advent-of-code.ts) for a complete example) and register it in `mod.ts`. Only `groups`, `puzzleUrl` and `heading` are required; `discover`, every `fetch*` and `submit` are optional and the UI adapts to what exists. Be a good citizen: providers send your `contact` as the User-Agent and nothing is requested unless you ask for it.
 

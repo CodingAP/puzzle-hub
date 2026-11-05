@@ -4,7 +4,18 @@
  * puzzle files on disk (solution, inputs, readme, puzzle text) plus the metadata that goes with them, for any source
  */
 
-import { getAnswers, getRuns, getStars, getStarsByGroup, getStarsForGroup, getStoredTitle, getTitlesForGroup, storeTitle } from './db.ts';
+import {
+    findAnswer,
+    getAnswers,
+    getRuns,
+    getStars,
+    getStarsByGroup,
+    getStarsForGroup,
+    getStoredTitle,
+    getTitlesForGroup,
+    insertAnswer,
+    storeTitle,
+} from './db.ts';
 import { ensureDir, exists, readTextOrNull } from './fs.ts';
 import { listGroupInfos, providerContext, puzzlePaths, type Source } from './sources.ts';
 import { solutionTemplate } from './templates.ts';
@@ -73,6 +84,27 @@ export const updateInputs = async (source: Source, group: string, puzzle: number
     if (!source.provider.fetchInputs) throw new Error(`${source.provider.name} inputs cannot be downloaded: paste them into the input panel instead`);
     const inputs = await source.provider.fetchInputs(await providerContext(source), group, puzzle);
     await writeInputs(source, group, puzzle, inputs);
+    await syncSolved(source, group, puzzle);
+};
+
+/**
+ * records the answers the site has already accepted (solved there, or before the hub existed) so the stars match.
+ * best effort: returns how many were new.
+ */
+export const syncSolved = async (source: Source, group: string, puzzle: number): Promise<number> => {
+    if (!source.provider.fetchSolved) return 0;
+    let added = 0;
+    try {
+        const solved = await source.provider.fetchSolved(await providerContext(source), group, puzzle);
+        for (const [part, answer] of Object.entries(solved)) {
+            if (Number(part) > source.parts || findAnswer(source, group, puzzle, Number(part), answer)?.correct === 1) continue;
+            insertAnswer(source, group, puzzle, Number(part), answer, true);
+            added++;
+        }
+    } catch {
+        // not logged in, offline: nothing to record
+    }
+    return added;
 };
 
 // ---- puzzle text -----------------------------------------------------------
