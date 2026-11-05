@@ -12,17 +12,26 @@ import { plainCode } from '../markdown.ts';
 import { settings } from '../settings.ts';
 import { actions, activeSource, getState, partKeys, partName, refKey, subscribe } from '../state.ts';
 import { partSelect } from './runner.ts';
-import type { Example, Part, RunOutcome } from '../types.ts';
+import type { Description, Example, Part, RunOutcome } from '../types.ts';
 import type { PanelDefinition } from '../workspace.ts';
 
 type Selection = { kind: 'saved'; index: number } | { kind: 'suggested'; index: number } | { kind: 'new' };
 
-/** fenced code blocks in the puzzle text are almost always the examples */
-const suggestionsFrom = (markdown: string): Example[] => {
+/** code blocks in the puzzle text are almost always the examples */
+const suggestionsFrom = ({ markdown, format }: Description): Example[] => {
+    let blocks: string[];
+    if (format === 'html') {
+        // sites that mark their example notes get exactly those; otherwise every multi-line block
+        const page = new DOMParser().parseFromString(markdown, 'text/html');
+        const notes = [...page.querySelectorAll('pre.note, pre.block')];
+        const candidates = notes.length ? notes : [...page.querySelectorAll('pre')].filter((pre) => (pre.textContent ?? '').trim().includes('\n'));
+        blocks = candidates.map((pre) => (pre.textContent ?? '').replace(/^\n+|\s+$/g, ''));
+    } else {
+        blocks = [...markdown.matchAll(/```\n([\s\S]*?)\n```/g)].map((match) => plainCode(match[1]));
+    }
     const seen = new Set<string>();
     const examples: Example[] = [];
-    for (const match of markdown.matchAll(/```\n([\s\S]*?)\n```/g)) {
-        const input = plainCode(match[1]);
+    for (const input of blocks) {
         if (!input.trim() || seen.has(input)) continue;
         seen.add(input);
         examples.push({ name: `puzzle text #${examples.length + 1}`, input: input + '\n' });
@@ -267,7 +276,7 @@ export const testsPanel: PanelDefinition = {
                 const [examples, description] = await Promise.all([api.examples(puzzle), api.description(puzzle)]);
                 if (loadedFor !== key) return;
                 saved = examples;
-                suggested = description ? suggestionsFrom(description.markdown) : [];
+                suggested = description ? suggestionsFrom(description) : [];
                 select(saved.length ? { kind: 'saved', index: 0 } : suggested.length ? { kind: 'suggested', index: 0 } : { kind: 'new' });
             } catch (error) {
                 loadedFor = '';

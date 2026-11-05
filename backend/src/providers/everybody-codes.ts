@@ -6,8 +6,6 @@
  * come from the api once a part is unlocked.
  */
 
-import { parseHtml } from '../html.ts';
-import { toMarkdown } from '../htmlmd.ts';
 import { type GroupInfo, MissingCredentialError, type Provider, type ProviderContext, range, type SubmitResult } from './mod.ts';
 
 const BASE = 'https://everybody.codes';
@@ -99,6 +97,24 @@ const fetchAsset = async (context: ProviderContext, path: string): Promise<Recor
         return null;
     }
 };
+
+/**
+ * trims a quest page down to the puzzle: the banner artwork (a 940x200 drawing) and its credit line go, diagrams stay.
+ * the hub's frontend sanitises the rest before it reaches the page.
+ */
+const cleanHtml = (html: string): string =>
+    html
+        .replace(/<script[\s\S]*?<\/script>/gi, '')
+        .replace(/<svg\b[^>]*>[\s\S]*?<\/svg>/gi, (svg) => {
+            const open = svg.slice(0, svg.indexOf('>') + 1);
+            const banner = /class="[^"]*quest-illustration/.test(open) || /viewBox="0 0 940 200"/.test(open) ||
+                (/width="940"/.test(open) && /height="200"/.test(open));
+            return banner ? '' : svg;
+        })
+        .replace(/<div[^>]*>\s*<small>\s*illustration by:[\s\S]*?<\/small>\s*<\/div>/gi, '')
+        .replace(/#YOUR_NOTES/g, '(your notes, in the input panel)')
+        .replace(/^\s*<hr\s*\/?>\s*/i, '')
+        .trim();
 
 const parts = [1, 2, 3] as const;
 
@@ -204,16 +220,16 @@ export const everybodyCodes: Provider = {
         const description = await fetchAsset(context, `${id}/${puzzle}/description.json`);
         if (!description || !quest.key1) return null;
 
-        let markdown = '';
+        // the quests lean on the site's own markup (story boxes, inline code chips, diagrams), so it is kept as html
+        let html = '';
         let count = 0;
         for (const part of parts) {
             const key = quest[`key${part}`];
             if (!key || !description[String(part)]) continue;
-            const html = await decrypt(description[String(part)], key);
-            markdown += `## Part ${part}\n\n${toMarkdown(parseHtml(html), BASE).trim()}\n\n`;
+            html += `<section class="quest-part" data-part="${part}">\n${cleanHtml(await decrypt(description[String(part)], key))}\n</section>\n\n`;
             count++;
         }
-        return count ? { markdown: markdown.trim() + '\n', parts: count } : null;
+        return count ? { markdown: html.trim() + '\n', parts: count, format: 'html' } : null;
     },
 
     /** the answers the site has already accepted for this account */

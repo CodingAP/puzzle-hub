@@ -110,18 +110,25 @@ export const syncSolved = async (source: Source, group: string, puzzle: number):
 // ---- puzzle text -----------------------------------------------------------
 
 export interface PuzzleDescription {
+    /** the text itself, in the format named below */
     markdown: string;
     parts: number;
     fetchedAt: string | null;
+    format: 'markdown' | 'html';
 }
 
 const parseDescription = (content: string): PuzzleDescription => {
-    const meta = content.match(/^<!-- fetched (\S+) from \S* ?\((\d+) parts?\) -->\n*/);
-    return { markdown: meta ? content.slice(meta[0].length) : content, parts: meta ? Number(meta[2]) : 1, fetchedAt: meta ? meta[1] : null };
+    const meta = content.match(/^<!-- fetched (\S+) from \S* ?\((\d+) parts?(, html)?\) -->\n*/);
+    return {
+        markdown: meta ? content.slice(meta[0].length) : content,
+        parts: meta ? Number(meta[2]) : 1,
+        fetchedAt: meta ? meta[1] : null,
+        format: meta?.[3] ? 'html' : 'markdown',
+    };
 };
 
 /**
- * downloads the puzzle text and stores it as markdown; null when the provider has none (yet)
+ * downloads the puzzle text and stores it next to the solution; null when the provider has none (yet)
  */
 export const fetchDescription = async (source: Source, group: string, puzzle: number): Promise<PuzzleDescription | null> => {
     if (!source.provider.fetchDescription) return null;
@@ -129,9 +136,8 @@ export const fetchDescription = async (source: Source, group: string, puzzle: nu
     if (!fetched) return null;
     const paths = puzzlePaths(source, group, puzzle);
     await ensureDir(parentOf(paths.description));
-    const header = `<!-- fetched ${new Date().toISOString()} from ${source.provider.puzzleUrl(group, puzzle)} (${fetched.parts} part${
-        fetched.parts === 1 ? '' : 's'
-    }) -->\n\n`;
+    const shape = `${fetched.parts} part${fetched.parts === 1 ? '' : 's'}${fetched.format === 'html' ? ', html' : ''}`;
+    const header = `<!-- fetched ${new Date().toISOString()} from ${source.provider.puzzleUrl(group, puzzle)} (${shape}) -->\n\n`;
     await Deno.writeTextFile(paths.description, header + fetched.markdown);
     return parseDescription(header + fetched.markdown);
 };

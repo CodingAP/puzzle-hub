@@ -152,7 +152,9 @@ export interface Example {
 }
 
 export interface Description {
+    /** the text, as markdown or (format 'html') the site's own markup */
     markdown: string;
+    format?: 'markdown' | 'html';
     parts: number;
     fetchedAt: string | null;
 }

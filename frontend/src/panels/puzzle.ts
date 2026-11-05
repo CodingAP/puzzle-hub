@@ -8,8 +8,10 @@
 import { api } from '../api.ts';
 import { formatDate, h, replace } from '../dom.ts';
 import { renderMarkdown } from '../markdown.ts';
+import { sanitizeHtml } from '../sanitize.ts';
 import { settings } from '../settings.ts';
 import { actions, activeSource, getState, refKey, subscribe } from '../state.ts';
+import type { Description } from '../types.ts';
 import type { PanelDefinition } from '../workspace.ts';
 
 export const puzzlePanel: PanelDefinition = {
@@ -40,9 +42,11 @@ export const puzzlePanel: PanelDefinition = {
             info.className = `${className}${/^https?:/.test(value) ? ' path' : ''}`;
         };
 
-        const renderText = (markdown: string, parts: number, fetchedAt: string | null) => {
+        const renderText = ({ markdown, parts, fetchedAt, format }: Description) => {
             const total = activeSource()?.parts ?? parts;
-            text.innerHTML = renderMarkdown(markdown);
+            text.classList.toggle('site-html', format === 'html');
+            if (format === 'html') text.replaceChildren(sanitizeHtml(markdown));
+            else text.innerHTML = renderMarkdown(markdown);
             setInfo(
                 `${total > 1 ? (parts >= total ? 'all parts' : `part ${parts} of ${total}`) : ''}${
                     fetchedAt ? `${total > 1 ? ' · ' : ''}fetched ${formatDate(fetchedAt)}` : ''
@@ -57,7 +61,7 @@ export const puzzlePanel: PanelDefinition = {
             setInfo('fetching…');
             try {
                 const description = await api.refreshDescription(target);
-                if (refKey(target) === refKey(getState().puzzle)) renderText(description.markdown, description.parts, description.fetchedAt);
+                if (refKey(target) === refKey(getState().puzzle)) renderText(description);
                 await actions.refreshDetail();
             } catch (error) {
                 setInfo(error instanceof Error ? error.message : String(error), 'error');
@@ -99,7 +103,7 @@ export const puzzlePanel: PanelDefinition = {
                     );
                     return;
                 }
-                renderText(description.markdown, description.parts, description.fetchedAt);
+                renderText(description);
             } catch (error) {
                 loadedFor = '';
                 replace(text, h('div', { className: 'empty error' }, error instanceof Error ? error.message : String(error)));

@@ -26,7 +26,9 @@ export interface ProviderContext {
 }
 
 export interface FetchedDescription {
+    /** the puzzle text: markdown, or (format 'html') the site's own markup, which the hub sanitises before showing it */
     markdown: string;
+    format?: 'markdown' | 'html';
     /** how many parts of the text were available */
     parts: number;
 }

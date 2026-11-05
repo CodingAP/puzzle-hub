@@ -5,8 +5,7 @@
  * challenges themselves are behind a login.
  */
 
-import { findElement, parseHtml, textOf } from '../html.ts';
-import { toMarkdown } from '../htmlmd.ts';
+import { findElement, type HtmlNode, parseHtml, textOf } from '../html.ts';
 import { MissingCredentialError, type Provider, type ProviderContext, range } from './mod.ts';
 
 const BASE = 'https://challenges.aquaq.co.uk';
@@ -14,12 +13,59 @@ const GROUP = 'challenges';
 
 const headers = (context: ProviderContext) => ({ cookie: `session=${context.session}`, 'User-Agent': context.userAgent });
 
+// the text and the accepted answer come from the same page: ask for it once
+const pages = new Map<string, { at: number; page: Promise<string | null> }>();
+
 /** the challenge page, or null when it is not reachable (it redirects to the login page without a valid cookie) */
-const fetchPage = async (context: ProviderContext, puzzle: number): Promise<string | null> => {
+const fetchPage = (context: ProviderContext, puzzle: number): Promise<string | null> => {
     if (!context.session) throw new MissingCredentialError(aquaq);
-    const response = await fetch(`${BASE}/challenge/${puzzle}`, { headers: headers(context) });
-    if (!response.ok || response.url.includes('/login')) return null;
-    return await response.text();
+    const key = `${context.session.slice(-12)}/${puzzle}`;
+    const cached = pages.get(key);
+    if (cached && Date.now() - cached.at < 15_000) return cached.page;
+    const page = (async () => {
+        const response = await fetch(`${BASE}/challenge/${puzzle}`, { headers: headers(context) });
+        if (!response.ok || response.url.includes('/login')) return null;
+        return await response.text();
+    })();
+    pages.set(key, { at: Date.now(), page });
+    page.catch(() => pages.delete(key));
+    return page;
+};
+
+const escapeHtml = (text: string) => text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+/**
+ * the challenge text as tidy markup: the site writes prose with <br> line breaks and puts examples in boxes whose
+ * <pre> also uses <br> for new lines. examples become real blocks; buttons and forms are left out.
+ */
+const serialize = (node: HtmlNode, inPre = false): string => {
+    if (node.type === 'text') return escapeHtml(node.text);
+    const children = (pre = inPre) => node.children.map((child) => serialize(child, pre)).join('');
+    switch (node.tag) {
+        case 'br':
+            return inPre ? '\n' : '<br>';
+        case 'pre':
+            return `<pre class="block">${children(true).replace(/^\n+|\s+$/g, '')}</pre>`;
+        case 'form':
+        case 'script':
+        case 'style':
+        case 'input':
+        case 'select':
+        case 'button':
+            return '';
+        case 'a': {
+            if (/\bbtn\b/.test(node.attributes.class ?? '')) return ''; // "get input" and friends
+            const href = node.attributes.href ?? '';
+            return `<a href="${escapeHtml(/^https?:/.test(href) ? href : `${BASE}${href.startsWith('/') ? '' : '/'}${href}`)}">${children()}</a>`;
+        }
+        case 'div':
+            // the example boxes only wrap a <pre>; other wrappers are structure the hub does not need
+            return /bd-container-body-mono/.test(node.attributes.class ?? '') ? `<div class="example-box">${children()}</div>` : children();
+        default:
+            return /^(b|strong|i|em|u|code|ul|ol|li|p|h[1-6]|table|thead|tbody|tr|th|td|sub|sup|span)$/.test(node.tag)
+                ? `<${node.tag}>${children()}</${node.tag}>`
+                : children();
+    }
 };
 
 /** every challenge on the public front page as number -> title */
@@ -75,12 +121,24 @@ export const aquaq: Provider = {
     async fetchDescription(context, _group, puzzle) {
         const html = await fetchPage(context, puzzle);
         if (!html) return null;
-        const root = parseHtml(html);
-        const container = findElement(root, (element) => element.tag === 'main') ??
-            findElement(root, (element) => element.tag === 'div' && /challenge|content|container/.test(element.attributes.class ?? '')) ??
-            findElement(root, (element) => element.tag === 'body');
-        if (!container) return null;
-        const markdown = toMarkdown(container, BASE).trim();
-        return markdown ? { markdown: markdown + '\n', parts: 1 } : null;
+        const body = findElement(
+            parseHtml(html),
+            (element) => element.tag === 'div' && (element.attributes.class ?? '').split(/\s+/).includes('bd-container-body'),
+        );
+        if (!body) return null;
+        const text = serialize(body)
+            .replace(/^(\s|<br>)+|(\s|<br>)+$/g, '') // the page pads the text with blank lines
+            .replace(/(<br>\s*)+(<div class="example-box">)/g, '$2') // examples are blocks: no extra blank lines around them
+            .replace(/(<\/div>)(\s*<br>)+/g, '$1');
+        return text ? { markdown: `<section class="challenge">\n${text}\n</section>\n`, parts: 1, format: 'html' } : null;
+    },
+
+    /** a solved challenge shows the answer that was accepted */
+    async fetchSolved(context, _group, puzzle) {
+        const html = await fetchPage(context, puzzle);
+        const answer = html?.match(/already completed this challenge\s*<br\s*\/?>\s*The answer was ([\s\S]*?)\s*<\/div>/i)?.[1];
+        const solved: Record<number, string> = {};
+        if (answer) solved[1] = textOf(parseHtml(answer)).trim();
+        return solved;
     },
 };
