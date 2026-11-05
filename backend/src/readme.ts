@@ -46,7 +46,12 @@ export const extractWriteup = (existing: string): string | null => {
 
     const lines = existing.split('\n');
     const results = lines.findIndex((line) => /^#+\s*results\s*$/i.test(line.trim()));
-    if (results === -1) return null;
+    if (results === -1) {
+        // no generated section at all: everything under the title is hand written
+        const title = lines.findIndex((line) => line.startsWith('# '));
+        const body = lines.slice(title + 1).join('\n').trim();
+        return body ? `${WRITEUP_MARKER}\n\n${body}` : null;
+    }
     let end = results + 1;
     let seenTable = false;
     for (; end < lines.length; end++) {
