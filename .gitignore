@@ -1,0 +1,14 @@
+# built frontend bundle
+frontend/dist/
+
+# this machine's configuration: which repositories are mounted, and environment
+hub.json
+.env
+
+# runtime data: site credentials (session cookies) live here and must never be committed
+data/
+
+# editors / os
+.DS_Store
+.vscode/
+.idea/

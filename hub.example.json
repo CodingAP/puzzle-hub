@@ -1,0 +1,8 @@
+{
+    "title": "My Puzzle Hub",
+    "contact": "https://github.com/you/your-puzzle-repo by you@example.com",
+    "sources": [
+        "../advent-of-code",
+        "../everybody-codes"
+    ]
+}
