@@ -1,0 +1,6 @@
+# never bake this machine's secrets or configuration into an image
+data
+hub.json
+.env
+.git
+frontend/dist
