@@ -5,7 +5,7 @@
  */
 
 import { clear, h, replace, stars } from './dom.ts';
-import { actions, activeSource, firstPuzzle, getState, puzzleLabel, sourceInfo, subscribe } from './state.ts';
+import { actions, activeSource, firstPuzzle, getState, puzzleLabel, shownSource, sourceInfo, subscribe } from './state.ts';
 import type { Workspace } from './workspace.ts';
 
 export interface TopbarOptions {
@@ -56,21 +56,69 @@ const item = (label: string, onClick: () => void, options: { checked?: boolean; 
     );
 
 export const createTopbar = (root: HTMLElement, { getWorkspace }: TopbarOptions): void => {
-    const sourceSelect = h('select', { title: 'puzzle site' });
     const groupSelect = h('select', { title: 'group' });
     const puzzleSelect = h('select', { title: 'puzzle' });
     const brand = h('span', null, 'Puzzle Hub');
+    const editorLink = h('a', { className: 'bracket view-link view-link-editor', href: '#/editor' }, 'editor');
 
     const title = h('span', { className: 'puzzle-title' });
     const status = h('span', { className: 'status' });
 
     const groupsOf = (source: string) => getState().groups[source] ?? [];
 
-    /** jumps to another source, back to where you last were in it when that is known */
+    /** switches platform: the dashboard shows it, the editor jumps back to where you last were in it */
     const goSource = (source: string) => {
+        actions.setDashboardSource(source);
+        if (getState().view !== 'editor') return;
         const target = firstPuzzle(source);
         if (target) actions.selectPuzzle(target);
     };
+
+    // the platform switch lives on the right with the other menus, in both views
+    const platformLabel = h('span', { className: 'platform-name' }, '…');
+    const platformDropdown = h('div', { className: 'dropdown' });
+    const platformMenu = h(
+        'div',
+        { className: 'menu platform' },
+        h(
+            'button',
+            {
+                className: 'link',
+                title: 'switch between puzzle platforms',
+                onClick: (event: Event) => {
+                    event.stopPropagation();
+                    const open = platformMenu.classList.contains('open');
+                    closeMenus();
+                    if (open) return;
+                    const { hub, groups } = getState();
+                    const current = shownSource()?.id;
+                    replace(platformDropdown, h('div', { className: 'label' }, 'platform'));
+                    for (const source of hub?.sources ?? []) {
+                        const total = (groups[source.id] ?? []).reduce((sum, group) => sum + group.stars, 0);
+                        platformDropdown.append(h(
+                            'div',
+                            {
+                                className: `item${source.id === current ? ' current' : ''}`,
+                                onClick: (itemEvent: Event) => {
+                                    itemEvent.stopPropagation();
+                                    closeMenus();
+                                    goSource(source.id);
+                                },
+                            },
+                            source.id === current ? '● ' : '○ ',
+                            h('span', { className: 'platform-item-name' }, source.name),
+                            h('span', { className: 'claimed-stars' }, `${total}*`),
+                        ));
+                    }
+                    platformMenu.classList.add('open');
+                },
+            },
+            h('span', { className: 'dim' }, 'platform: '),
+            platformLabel,
+            ' ▾',
+        ),
+        platformDropdown,
+    );
 
     const goGroup = (group: string) => {
         const current = getState().puzzle;
@@ -80,7 +128,6 @@ export const createTopbar = (root: HTMLElement, { getWorkspace }: TopbarOptions)
         actions.selectPuzzle({ source: current.source, group, puzzle: info.puzzles.includes(current.puzzle) ? current.puzzle : info.puzzles[0] });
     };
 
-    sourceSelect.addEventListener('change', () => goSource(sourceSelect.value));
     groupSelect.addEventListener('change', () => goGroup(groupSelect.value));
     puzzleSelect.addEventListener('change', () => {
         const current = getState().puzzle;
@@ -172,15 +219,11 @@ export const createTopbar = (root: HTMLElement, { getWorkspace }: TopbarOptions)
             'span',
             { className: 'views' },
             h('a', { className: 'bracket view-link view-link-dashboard', href: '#/' }, 'dashboard'),
-            h('a', {
-                className: 'bracket view-link view-link-editor',
-                href: '#/editor',
-            }, 'editor'),
+            editorLink,
         ),
         h(
             'span',
             { className: 'nav editor-only' },
-            sourceSelect,
             h('button', { className: 'link', title: 'previous puzzle', onClick: () => step(-1) }, '<'),
             groupSelect,
             puzzleSelect,
@@ -188,6 +231,7 @@ export const createTopbar = (root: HTMLElement, { getWorkspace }: TopbarOptions)
         ),
         title,
         status,
+        platformMenu,
         h(
             'span',
             { className: 'editor-only menus' },
@@ -213,8 +257,11 @@ export const createTopbar = (root: HTMLElement, { getWorkspace }: TopbarOptions)
         brand.textContent = hub?.title ?? 'Puzzle Hub';
         document.title = hub?.title ?? 'Puzzle Hub';
         const sources = hub?.sources ?? [];
-        fill(sourceSelect, sources.map((source) => [source.id, source.name]), puzzle?.source ?? '');
-        sourceSelect.style.display = sources.length > 1 ? '' : 'none';
+        const shown = shownSource();
+        platformLabel.textContent = shown?.name ?? '…';
+        platformMenu.style.display = sources.length > 1 ? '' : 'none';
+        // from the dashboard, the editor opens in the platform being looked at
+        editorLink.href = getState().view === 'dashboard' && shown ? `#/editor/${encodeURIComponent(shown.id)}` : '#/editor';
         if (!puzzle) return;
 
         const source = sourceInfo(puzzle.source);
@@ -273,7 +320,7 @@ export const createTopbar = (root: HTMLElement, { getWorkspace }: TopbarOptions)
         );
     };
 
-    subscribe(renderPuzzle, ['hub', 'groups', 'puzzle', 'detail', 'detailError']);
+    subscribe(renderPuzzle, ['hub', 'groups', 'puzzle', 'detail', 'detailError', 'view', 'dashboardSource']);
     subscribe(renderStatus, ['dirty', 'running', 'lastError']);
     renderPuzzle();
     renderStatus();

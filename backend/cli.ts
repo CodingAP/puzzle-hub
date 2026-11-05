@@ -9,6 +9,7 @@ import { adoptReadmes } from './src/adopt.ts';
 import { bulkDownload } from './src/bulk.ts';
 import { parsePartSpec, type PartSpec, VERSION } from './src/config.ts';
 import { DEBUG_PORT } from './src/debug.ts';
+import { refreshDiscovery } from './src/discovery.ts';
 import { listGroup, listGroups, scaffoldPuzzle } from './src/puzzles.ts';
 import { runPuzzle, type RunResults } from './src/runner.ts';
 import { getCredentialInfo, LOCAL_CONFIG_PATH, setCredential } from './src/session.ts';
@@ -199,6 +200,18 @@ const commands: Record<string, CommandInfo> = {
             const source = await resolveSource(args);
             const result = await adoptReadmes(source);
             log(`${hl(source.name)}: read ${hl(result.puzzles)} readmes, stored ${hl(result.titles)} titles and ${hl(result.answers)} answers.`);
+        },
+    },
+    discover: {
+        aliases: ['refresh'],
+        description: 'asks the site of a source which groups and puzzles it has published right now (done automatically about once a day).',
+        arguments: ['source'],
+        command: async (args) => {
+            const source = await resolveSource(args);
+            if (!source.provider.discover) return log(`${source.provider.name} cannot be asked: its puzzles come from the manifest.`);
+            const entry = await refreshDiscovery(source);
+            if (!entry) return fail(`${source.provider.name} could not be reached; the last known list stays in use.`);
+            for (const group of entry.groups) log(`${hl(group.id)} - ${group.label}: ${hl(group.puzzles.length)} ${source.labels.puzzle}s`);
         },
     },
     credential: {

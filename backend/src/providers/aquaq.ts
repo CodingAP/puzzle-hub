@@ -1,7 +1,8 @@
 /**
  * backend/src/providers/aquaq.ts
  *
- * https://challenges.aquaq.co.uk: forty one-part challenges numbered from 0, behind a login
+ * https://challenges.aquaq.co.uk: one-part challenges numbered from 0. the list (with titles) is public, the
+ * challenges themselves are behind a login.
  */
 
 import { findElement, parseHtml, textOf } from '../html.ts';
@@ -21,6 +22,17 @@ const fetchPage = async (context: ProviderContext, puzzle: number): Promise<stri
     return await response.text();
 };
 
+/** every challenge on the public front page as number -> title */
+const fetchIndex = async (context: ProviderContext): Promise<Map<number, string>> => {
+    const response = await fetch(BASE, { headers: { 'User-Agent': context.userAgent } });
+    if (!response.ok) throw new Error(`${BASE} answered ${response.status}`);
+    const challenges = new Map<number, string>();
+    for (const match of (await response.text()).matchAll(/<a\b[^>]*href="\/challenge\/(\d+)"[^>]*>([\s\S]*?)<\/a>/g)) {
+        challenges.set(Number(match[1]), textOf(parseHtml(match[2])).trim());
+    }
+    return challenges;
+};
+
 export const aquaq: Provider = {
     id: 'aquaq',
     name: 'AquaQ Challenges',
@@ -30,20 +42,23 @@ export const aquaq: Provider = {
     perPartInput: false,
     credential: { label: 'session cookie', hint: 'the value of the "session" cookie on challenges.aquaq.co.uk' },
 
-    groups: () => [{ id: GROUP, label: 'Challenges', puzzles: range(0, 39) }],
+    groups: () => [{ id: GROUP, label: 'Challenges', puzzles: range(0, 40) }],
+
+    async discover(context) {
+        const challenges = await fetchIndex(context);
+        if (challenges.size === 0) return null;
+        return {
+            groups: [{ id: GROUP, label: 'Challenges', puzzles: [...challenges.keys()].sort((a, b) => a - b) }],
+            titles: { [GROUP]: Object.fromEntries(challenges) },
+        };
+    },
 
     puzzleUrl: (_group, puzzle) => `${BASE}/challenge/${puzzle}`,
 
     heading: (_group, puzzle, title) => `# AquaQ Challenge ${puzzle}: [${title}](${BASE}/challenge/${puzzle})`,
 
     async fetchTitle(context, _group, puzzle) {
-        const html = await fetchPage(context, puzzle);
-        if (!html) return null;
-        const root = parseHtml(html);
-        const heading = findElement(root, (element) => element.tag === 'h1') ?? findElement(root, (element) => element.tag === 'h2') ??
-            findElement(root, (element) => element.tag === 'title');
-        const title = heading ? textOf(heading).replace(/^\s*Challenge\s+\d+\s*[-:–]?\s*/i, '').trim() : '';
-        return title || null;
+        return (await fetchIndex(context)).get(puzzle) || null;
     },
 
     async fetchInputs(context, _group, puzzle) {

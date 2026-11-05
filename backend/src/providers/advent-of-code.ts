@@ -11,16 +11,22 @@ import { MissingCredentialError, type Provider, type ProviderContext, range, typ
 const BASE = 'https://adventofcode.com';
 const FIRST_YEAR = 2015;
 
-/** the latest year that has puzzles: december (or nov 30 for the countdown) of the current year, else last year */
-const currentYear = (now: Date): number => {
-    const month = now.getMonth() + 1;
-    let year = now.getFullYear();
-    if (month !== 12) year--;
-    if (month === 11 && now.getDate() === 30) year++;
-    return year;
+/** puzzles unlock at midnight US eastern time (utc-5 all through december), wherever the hub runs */
+const eastern = (now: Date) => {
+    const shifted = new Date(now.getTime() - 5 * 60 * 60 * 1000);
+    return { year: shifted.getUTCFullYear(), month: shifted.getUTCMonth() + 1, day: shifted.getUTCDate() };
 };
 
+/** the latest year that has puzzles: this year once december has started, else last year */
+const currentYear = (now: Date): number => {
+    const { year, month } = eastern(now);
+    return month === 12 ? year : year - 1;
+};
+
+/** how long an event runs when the site has not told us yet (see discover) */
 const daysInYear = (year: number) => (year >= 2025 ? 12 : 25);
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 const headers = (context: ProviderContext) => ({
     'Content-Type': 'application/x-www-form-urlencoded',
@@ -52,18 +58,54 @@ export const adventOfCode: Provider = {
     credential: { label: 'session cookie', hint: 'the value of the "session" cookie on adventofcode.com' },
 
     groups(now = new Date()) {
+        const today = eastern(now);
         return range(FIRST_YEAR, currentYear(now)).map((year) => {
-            const inProgress = year === now.getFullYear() && now.getMonth() === 11;
-            const last = inProgress ? Math.min(daysInYear(year), now.getDate()) : daysInYear(year);
+            const inProgress = year === today.year && today.month === 12;
+            const last = inProgress ? Math.min(daysInYear(year), today.day) : daysInYear(year);
             return { id: String(year), label: String(year), puzzles: range(1, last) };
         });
+    },
+
+    /**
+     * the public calendar page of each year links every day that exists. finished years never change, so each is
+     * read once; only the running event is looked at again (hourly in december).
+     */
+    async discover(context, now = new Date(), previous) {
+        const today = eastern(now);
+        const groups = [];
+        let fetched = 0;
+        for (const year of range(FIRST_YEAR, today.year)) {
+            const id = String(year);
+            const known = previous?.groups.find((group) => group.id === id);
+            if (known && year < today.year) {
+                groups.push(known);
+                continue;
+            }
+            if (fetched++ > 0) await sleep(500); // be gentle: this is a dozen requests the first time, one afterwards
+            const response = await fetch(`${BASE}/${year}`, { headers: { 'User-Agent': context.userAgent } });
+            const html = response.ok ? await response.text() : '';
+            const days = [...new Set([...html.matchAll(new RegExp(`href="/${year}/day/(\\d+)"`, 'g'))].map((match) => Number(match[1])))].sort((a, b) => a - b);
+            if (days.length) groups.push({ id, label: id, puzzles: days });
+            else if (known) groups.push(known);
+            else if (year < today.year) groups.push({ id, label: id, puzzles: range(1, daysInYear(year)) });
+        }
+        return groups.length ? { groups, maxAgeMs: today.month === 12 ? 60 * 60 * 1000 : undefined } : null;
+    },
+
+    /** the calendar alone says today's puzzle is out, so it shows up at midnight without waiting for the next look at the site */
+    released(now = new Date()) {
+        const today = eastern(now);
+        if (today.month !== 12) return [];
+        const id = String(today.year);
+        return [{ id, label: id, puzzles: range(1, Math.min(daysInYear(today.year), today.day)) }];
     },
 
     puzzleUrl: (group, puzzle) => `${BASE}/${group}/day/${puzzle}`,
 
     current(now) {
-        if (now.getMonth() !== 11 || now.getDate() > daysInYear(now.getFullYear())) return null;
-        return { group: String(now.getFullYear()), puzzle: now.getDate() };
+        const today = eastern(now);
+        if (today.month !== 12 || today.day > daysInYear(today.year)) return null;
+        return { group: String(today.year), puzzle: today.day };
     },
 
     heading: (group, puzzle, title) => `# Advent of Code ${group} - Day ${puzzle}: [${title}](${BASE}/${group}/day/${puzzle})`,

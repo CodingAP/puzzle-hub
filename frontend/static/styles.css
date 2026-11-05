@@ -1669,3 +1669,53 @@ button.link.current {
 .tests-expected input {
     width: 9em;
 }
+
+/* layout helpers and the platform switch */
+.text-center {
+    text-align: center;
+}
+
+/* the platform switch and menus sit on the right in both views (the puzzle title takes the slack in the editor) */
+#topbar .status {
+    margin-left: auto;
+}
+
+body.view-editor #topbar .status {
+    margin-left: 0;
+}
+
+.menu.platform .platform-name {
+    color: var(--lightgreen);
+    text-shadow: var(--glow-accent);
+    font-weight: bold;
+}
+
+.menu.platform .dropdown .item {
+    justify-content: flex-start;
+}
+
+.menu.platform .dropdown .item.current {
+    color: var(--lightgreen);
+}
+
+.menu.platform .platform-item-name {
+    flex: 1;
+    margin-right: 18px;
+}
+
+.source-row {
+    margin: 2px 0 2px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+}
+
+.platform-heading {
+    font-size: 20px;
+    text-decoration: none;
+}
+
+.platform-hint {
+    font-size: 12px;
+}

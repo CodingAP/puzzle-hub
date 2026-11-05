@@ -125,12 +125,14 @@ A provider is the one site-specific piece: how puzzles are grouped, and (optiona
 
 | provider | groups | parts | downloads | submit |
 | --- | --- | --- | --- | --- |
-| `advent-of-code` | years, 25 days (12 from 2025) | 2, one input | title, input, text | yes |
+| `advent-of-code` | years, as many days as the calendar shows | 2, one input | title, input, text | yes |
 | `everybody-codes` | events (20 quests) and stories (3 quests) | 3, an input per part | title, inputs, text (decrypted with your keys) | check on the site, then record |
-| `aquaq` | one list of challenges 0–39 | 1 | input; title and text best effort | check on the site, then record |
+| `aquaq` | one list of challenges, numbered from 0 | 1 | input; title and text best effort | check on the site, then record |
 | `manual` | whatever the manifest's `groups` say | manifest's `parts` | nothing: paste inputs in the Input panel | record only |
 
-To add a site, write a `Provider` (see [backend/src/providers/mod.ts](backend/src/providers/mod.ts) for the interface and [advent-of-code.ts](backend/src/providers/advent-of-code.ts) for a complete example) and register it in `mod.ts`. Only `groups`, `puzzleUrl` and `heading` are required; every `fetch*` and `submit` is optional and the UI adapts to what exists. Be a good citizen: providers send your `contact` as the User-Agent and nothing is requested unless you ask for it.
+How many puzzles a site has is not hard-coded: `advent-of-code` reads each year's public calendar page (finished years once, the running event hourly, and the day that unlocks at midnight US Eastern shows up by the clock alone), `aquaq` reads the public challenge list (which also supplies the titles) and `everybody-codes` checks which quests are on its CDN. The answer is cached in the data folder and refreshed about once a day (`deno task cli discover --source=<id>` forces it); the built-in numbers are only a fallback, and a manifest's `groups` or folders that already exist on disk always count too.
+
+To add a site, write a `Provider` (see [backend/src/providers/mod.ts](backend/src/providers/mod.ts) for the interface and [advent-of-code.ts](backend/src/providers/advent-of-code.ts) for a complete example) and register it in `mod.ts`. Only `groups`, `puzzleUrl` and `heading` are required; `discover`, every `fetch*` and `submit` are optional and the UI adapts to what exists. Be a good citizen: providers send your `contact` as the User-Agent and nothing is requested unless you ask for it.
 
 ## CLI
 
@@ -144,6 +146,7 @@ deno task cli submit  --source=advent --year=2024 --day=1 --part=1     # --recor
 deno task cli update  --source=advent                                  # download every missing input and puzzle text
 deno task cli credential --source=advent --value=<session cookie>
 deno task cli adopt   --source=aquaq
+deno task cli discover --source=aquaq                                  # ask the site what it has published right now
 deno task cli serve   --port=8000
 ```
 
@@ -151,7 +154,7 @@ deno task cli serve   --port=8000
 
 ## Web UI
 
-The dashboard has a tab per source. The editor's panels (Puzzle, Puzzles, Input, Code, Runner, Tests, Debugger, Runs, Submissions, README, Settings) can be dragged into tabs and splits; layouts and presets are remembered per browser. `#/<source>/<group>/<puzzle>` links straight to a puzzle.
+The platform menu in the top right switches between sources in both views (the editor returns to where you last were on that platform). The editor's panels (Puzzle, Puzzles, Input, Code, Runner, Tests, Debugger, Runs, Submissions, README, Settings) can be dragged into tabs and splits; layouts and presets are remembered per browser. `#/<source>/<group>/<puzzle>` links straight to a puzzle.
 
 - **Runner** streams console output while the solution runs; cancel kills the process. Profile averages over N iterations, rewrites the README's results table (everything from `%%%` on is your writeup and is left alone) and publishes the puzzle with git.
 - **Tests** runs example inputs: code blocks from the puzzle text are offered automatically, saved ones (with expected answers per part) live in `examples.json` next to the solution.

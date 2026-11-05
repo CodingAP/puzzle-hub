@@ -16,6 +16,8 @@ export interface State {
     puzzle: PuzzleRef | null;
     /** the source the dashboard is showing */
     dashboardSource: string | null;
+    /** which page is on screen */
+    view: 'dashboard' | 'editor';
     detail: PuzzleDetail | null;
     detailError: string | null;
     dirty: boolean;
@@ -36,6 +38,7 @@ let state: State = {
     groups: {},
     puzzle: null,
     dashboardSource: null,
+    view: 'dashboard',
     detail: null,
     detailError: null,
     dirty: false,
@@ -97,9 +100,14 @@ export const partOptions = (source: SourceInfo | null): [string, string][] => {
 /** a default part setting made for one source may not exist in another */
 export const validPart = (source: SourceInfo | null, part: Part): Part => (partOptions(source).some(([value]) => value === part) ? part : 'all');
 
-/** somewhere sensible to start in a source: its newest group that has a solution, else its newest group */
+/** the platform on screen: the editor's puzzle decides there, the dashboard has its own */
+export const shownSource = (): SourceInfo | null => sourceInfo(state.view === 'editor' ? state.puzzle?.source : state.dashboardSource);
+
+/** somewhere sensible to start in a source: where you last were in it, else its newest group that has a solution, else its newest group */
 export const firstPuzzle = (source: string): PuzzleRef | null => {
     const groups = state.groups[source] ?? [];
+    const last = settings.get().lastBySource[source];
+    if (last && groups.find((group) => group.id === last.group)?.puzzles.includes(last.puzzle)) return last;
     const group = [...groups].reverse().find((candidate) => candidate.stars > 0) ?? groups.at(-1);
     return group ? { source, group: group.id, puzzle: group.puzzles[0] } : null;
 };
@@ -136,6 +144,10 @@ export const actions = {
         settings.set({ dashboardSource: source });
     },
 
+    setView(view: State['view']): void {
+        update({ view });
+    },
+
     /**
      * switches puzzle (asking first when the editor has unsaved changes) and reloads its detail
      */
@@ -146,7 +158,7 @@ export const actions = {
         }
 
         update({ puzzle, dirty: false, pendingCode: null, detail: null, detailError: null, lastRun: null, lastSubmit: null, lastError: null });
-        settings.set({ lastPuzzle: puzzle });
+        settings.set({ lastPuzzle: puzzle, lastBySource: { ...settings.get().lastBySource, [puzzle.source]: puzzle } });
         await this.refreshDetail();
         return true;
     },

@@ -167,7 +167,11 @@ const boot = async () => {
     const showView = (next: View) => {
         const blocked = next === 'editor' && editorBlocked();
         if (view === next && notice.classList.contains('hidden') === !blocked) return;
+        const leavingEditor = view === 'editor' && next === 'dashboard';
         view = next;
+        actions.setView(next);
+        const editing = getState().puzzle?.source;
+        if (leavingEditor && editing) actions.setDashboardSource(editing);
         document.body.classList.toggle('view-dashboard', next === 'dashboard');
         document.body.classList.toggle('view-editor', next === 'editor');
         document.body.classList.toggle('view-notice', blocked);

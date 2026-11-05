@@ -31,6 +31,15 @@ export interface FetchedDescription {
     parts: number;
 }
 
+/** what a site has published right now */
+export interface Discovery {
+    groups: GroupInfo[];
+    /** titles that came with the listing, as group -> puzzle -> title */
+    titles?: Record<string, Record<number, string>>;
+    /** ask again sooner than the usual day, e.g. while an event is running */
+    maxAgeMs?: number;
+}
+
 export type SubmitResult = 'correct' | 'incorrect' | 'too-soon' | 'already-solved' | 'unknown';
 
 export interface Provider {
@@ -45,8 +54,16 @@ export interface Provider {
     perPartInput: boolean;
     /** the secret needed for downloads, or null when the site needs none / the provider is offline */
     credential: { label: string; hint: string } | null;
-    /** groups and puzzles the site has published (sources can add to or override this in their manifest) */
+    /** groups and puzzles the site is known to have: the fallback for sites that cannot be asked (see discover) */
     groups(now?: Date): GroupInfo[];
+    /**
+     * asks the site which groups and puzzles exist right now, so new ones show up without a hub update.
+     * called at most about once a day; the answer replaces groups() and is cached (the previous answer is passed in
+     * so parts that cannot change need not be asked again). null = could not tell.
+     */
+    discover?(context: ProviderContext, now?: Date, previous?: Discovery | null): Promise<Discovery | null>;
+    /** puzzles a calendar says are out right now, added on top of the last answer from the site */
+    released?(now?: Date): GroupInfo[];
     puzzleUrl(group: string, puzzle: number): string;
     /** the puzzle that was released today, if the site publishes on a calendar (used as the cli default) */
     current?(now: Date): { group: string; puzzle: number } | null;

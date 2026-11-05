@@ -5,7 +5,7 @@
  */
 
 import { api, onUnauthorized } from './api.ts';
-import { clear, h, replace } from './dom.ts';
+import { h, replace } from './dom.ts';
 import { createPuzzleGrid } from './grid.ts';
 import { settings } from './settings.ts';
 import { actions, getState, puzzleLabel, sourceInfo, subscribe } from './state.ts';
@@ -114,29 +114,25 @@ export const createDashboard = (root: HTMLElement, openEditor: (puzzle: PuzzleRe
         (getState().groups[source] ?? []).reduce((sum, group) => ({ stars: sum.stars + group.stars, max: sum.max + group.maxStars }), { stars: 0, max: 0 });
 
     const renderSources = () => {
-        const { hub, dashboardSource } = getState();
+        const { hub } = getState();
+        const source = shown();
         heading.textContent = hub?.title ?? 'Puzzle Hub';
-        clear(sourceRow);
-        const sources = hub?.sources ?? [];
-        sourceRow.style.display = sources.length > 1 ? '' : 'none';
-        sources.forEach((source, index) => {
-            if (index > 0) sourceRow.append(' · ');
-            const { stars } = starsOf(source.id);
-            sourceRow.append(
-                h(
-                    'a',
-                    {
-                        className: `bracket year-selector source-selector${source.id === dashboardSource ? ' current' : ''}`,
-                        title: `${source.provider.name}: ${stars} stars`,
-                        onClick: () => actions.setDashboardSource(source.id),
-                    },
-                    source.name,
-                    ' ',
-                    h('span', { className: 'claimed-stars' }, `${stars}*`),
-                ),
-            );
-        });
-        descriptionsLabel.style.display = shown()?.capabilities.fetchDescription ? '' : 'none';
+        replace(
+            sourceRow,
+            source
+                ? [
+                    h('a', {
+                        className: 'header platform-heading',
+                        href: source.provider.home,
+                        target: '_blank',
+                        rel: 'noopener',
+                        title: `open ${source.provider.name}`,
+                    }, source.name),
+                    (hub?.sources.length ?? 0) > 1 ? h('span', { className: 'dim platform-hint' }, 'switch platform from the menu in the top right') : null,
+                ]
+                : null,
+        );
+        descriptionsLabel.style.display = source?.capabilities.fetchDescription ? '' : 'none';
     };
 
     let needsToken = false;
@@ -172,19 +168,15 @@ export const createDashboard = (root: HTMLElement, openEditor: (puzzle: PuzzleRe
         if (!source) return replace(totals, h('span', { className: 'dim' }, 'no puzzle repositories are mounted yet: list them in hub.json (see the readme).'));
         const here = starsOf(source.id);
         const everywhere = hub.sources.reduce((sum, entry) => sum + starsOf(entry.id).stars, 0);
-        const remembered = settings.get().lastPuzzle;
-        const last = remembered && remembered.source === dashboardSource ? remembered : null;
+        const last = (dashboardSource && settings.get().lastBySource[dashboardSource]) || null;
         const lastSource = sourceInfo(last?.source);
         replace(
             totals,
-            `${source.name}: `,
             h('span', { className: 'claimed-stars' }, `${here.stars}/${here.max}`),
             ' stars',
-            hub.sources.length > 1 ? [' · everything: ', h('span', { className: 'claimed-stars' }, String(everywhere))] : null,
+            hub.sources.length > 1 ? [' · all platforms: ', h('span', { className: 'claimed-stars' }, String(everywhere))] : null,
             ' · ',
-            h('a', { className: 'bracket', href: source.provider.home, target: '_blank', rel: 'noopener' }, 'site'),
-            source.repository ? [' ', h('a', { className: 'bracket', href: source.repository, target: '_blank', rel: 'noopener' }, 'repository')] : null,
-            ' ',
+            source.repository ? [h('a', { className: 'bracket', href: source.repository, target: '_blank', rel: 'noopener' }, 'repository'), ' '] : null,
             h(
                 'a',
                 { className: 'bracket', href: last ? `#/${last.source}/${last.group}/${last.puzzle}` : `#/editor/${source.id}` },

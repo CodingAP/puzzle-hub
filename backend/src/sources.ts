@@ -6,6 +6,7 @@
  */
 
 import { type HubConfig, loadHubConfig } from './config.ts';
+import { discoveredGroups } from './discovery.ts';
 import { exists, join, readTextOrNull } from './fs.ts';
 import { getProvider, type GroupInfo, type Provider, type ProviderContext, providerIds } from './providers/mod.ts';
 import { getCredential } from './session.ts';
@@ -228,7 +229,7 @@ const discover = async (source: Source): Promise<Map<string, Set<number>>> => {
 };
 
 /**
- * the groups of a source: what the provider says exists, adjusted by the manifest, plus anything found on disk
+ * the groups of a source: what the site (or failing that the provider) says exists, adjusted by the manifest, plus anything found on disk
  */
 export const listGroupInfos = async (source: Source): Promise<GroupInfo[]> => {
     const groups = new Map<string, GroupInfo>();
@@ -244,7 +245,11 @@ export const listGroupInfos = async (source: Source): Promise<GroupInfo[]> => {
         existing.puzzles = [...new Set([...existing.puzzles, ...puzzles])].sort((a, b) => a - b);
     };
 
-    for (const group of source.provider.groups()) upsert(group.id, group.label, group.puzzles);
+    // what the site says it has (asked now and then, cached), else what the provider knows by heart
+    const discovered = await discoveredGroups(source);
+    for (const group of discovered ?? source.provider.groups()) upsert(group.id, group.label, group.puzzles);
+    // a puzzle released since the site was last asked
+    if (discovered) { for (const group of source.provider.released?.() ?? []) upsert(group.id, group.label, group.puzzles); }
     for (const group of source.manifest.groups ?? []) {
         const puzzles = Array.isArray(group.puzzles)
             ? group.puzzles

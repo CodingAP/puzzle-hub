@@ -12,7 +12,10 @@ import { MissingCredentialError, type Provider, type ProviderContext, range } fr
 const BASE = 'https://everybody.codes';
 const CDN = 'https://everybody-codes.b-cdn.net/assets';
 const FIRST_EVENT = 2024;
-const STORIES = [1, 2, 3];
+const STORIES = [1, 2];
+/** probing stops here even if the cdn keeps answering */
+const MAX_QUESTS = 40;
+const MAX_STORIES = 30;
 
 /** "event2024" -> { kind: 'event', id: '2024' }; "story1" -> { kind: 'story', id: '1' } */
 const parseGroup = (group: string): { kind: 'event' | 'story'; id: string } => {
@@ -63,6 +66,18 @@ const fetchJson = async (url: string): Promise<Record<string, string> | null> =>
     }
 };
 
+/** how many quests of an event / story have been published (their text is on the cdn, encrypted) */
+const countQuests = async (context: ProviderContext, id: number): Promise<number> => {
+    let count = 0;
+    while (count < MAX_QUESTS) {
+        const response = await fetch(`${CDN}/${id}/${count + 1}/description.json`, { method: 'HEAD', headers: { 'User-Agent': context.userAgent } });
+        if (response.status === 404) break;
+        if (!response.ok) throw new Error(`the everybody.codes cdn answered ${response.status}`);
+        count++;
+    }
+    return count;
+};
+
 export const everybodyCodes: Provider = {
     id: 'everybody-codes',
     name: 'Everybody Codes',
@@ -79,6 +94,19 @@ export const everybodyCodes: Provider = {
             ...range(FIRST_EVENT, lastEvent).map((year) => ({ id: `event${year}`, label: `Event ${year}`, puzzles: range(1, 20) })),
             ...STORIES.map((story) => ({ id: `story${story}`, label: `Story ${story}`, puzzles: range(1, 3) })),
         ];
+    },
+
+    async discover(context, now = new Date()) {
+        const years = range(FIRST_EVENT, now.getFullYear());
+        const events = await Promise.all(years.map((year) => countQuests(context, year)));
+        const groups = years.map((year, index) => ({ id: `event${year}`, label: `Event ${year}`, puzzles: range(1, events[index]) }));
+        for (let story = 1; story <= MAX_STORIES; story++) {
+            const quests = await countQuests(context, story);
+            if (quests === 0) break;
+            groups.push({ id: `story${story}`, label: `Story ${story}`, puzzles: range(1, quests) });
+        }
+        const published = groups.filter((group) => group.puzzles.length > 0);
+        return published.length ? { groups: published } : null;
     },
 
     puzzleUrl(group, puzzle) {

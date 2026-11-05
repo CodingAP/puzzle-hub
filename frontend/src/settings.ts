@@ -25,6 +25,8 @@ export interface Settings {
     themeFollowsSource: boolean;
     puzzlePanelMode: 'text' | 'website';
     lastPuzzle: PuzzleRef | null;
+    /** where you last were in each source, so switching platform takes you back there */
+    lastBySource: Record<string, PuzzleRef>;
     dashboardSource: string | null;
 }
 
@@ -48,6 +50,7 @@ export const DEFAULT_SETTINGS: Settings = {
     themeFollowsSource: true,
     puzzlePanelMode: 'text',
     lastPuzzle: null,
+    lastBySource: {},
     dashboardSource: null,
 };
 
