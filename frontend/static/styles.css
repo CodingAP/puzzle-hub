@@ -52,7 +52,8 @@
     --panel-blur: none;
 }
 
-[data-theme='light'] {
+/* every theme has a light and a dark mode: the block without [data-mode] is its native one */
+[data-theme='aoc'][data-mode='light'] {
     --background: #f4f6fa;
     --panel: #ffffff;
     --hover: #e8ecf4;
@@ -1718,4 +1719,518 @@ body.view-editor #topbar .status {
 
 .platform-hint {
     font-size: 12px;
+}
+
+/* ============================================================================================
+   light / dark variants of each theme (the native mode of a theme is defined further up)
+   ============================================================================================ */
+[data-theme='ec'][data-mode='light'] {
+    --background: #ffffff;
+    --panel: #fffdf8;
+    --hover: #f3efe2;
+    --lightgreen: #8f6b0c;
+    --linkgreen: #087a37;
+    --highlightlinkgreen: #055d2a;
+    --staryellow: #b8891a;
+    --unclaimedstar: #c9c4b4;
+    --disabled: #c4c4c0;
+    --offwhite: #1e1e1e;
+    --dim: #68726f;
+    --red: #c62828;
+    --border: #e3dcc8;
+    --card-border: #cfc6ab;
+    --snow: #d9b95a;
+    --app-bg: radial-gradient(ellipse at 50% -20%, #fff3d6 0%, #ffffff 60%) fixed;
+    --glow-accent: none;
+    --glow-star: none;
+}
+
+[data-theme='ec'][data-mode='light'] button.link,
+[data-theme='ec'][data-mode='light'] a.bracket {
+    background: rgba(0, 0, 0, 0.02);
+}
+
+[data-theme='ec'][data-mode='light'] button.link:hover,
+[data-theme='ec'][data-mode='light'] a.bracket:hover {
+    background: rgba(8, 122, 55, 0.08);
+}
+
+[data-theme='ec'][data-mode='light'] .day,
+[data-theme='ec'][data-mode='light'] .dashboard .tools {
+    background: linear-gradient(180deg, #ffffff, #fffaf0);
+}
+
+[data-theme='ec'][data-mode='light'] .day:hover {
+    box-shadow: 0 6px 18px rgba(120, 90, 10, 0.18);
+}
+
+[data-theme='ec'][data-mode='light'] .snowflake {
+    opacity: 0.6;
+    text-shadow: none;
+}
+
+[data-theme='hacker'][data-mode='light'] {
+    --background: #eef6ea;
+    --panel: #e4f0df;
+    --hover: #d5e8cf;
+    --lightgreen: #0a6b1e;
+    --linkgreen: #0e7a25;
+    --highlightlinkgreen: #064d14;
+    --staryellow: #8a6d00;
+    --unclaimedstar: #9cc49c;
+    --disabled: #b5cfb0;
+    --offwhite: #0b3d0b;
+    --dim: #5f8f5f;
+    --red: #b3261e;
+    --border: #b5cfb0;
+    --card-border: #7fae7f;
+    --snow: #0e7a25;
+    --glow-accent: none;
+    --glow-star: none;
+}
+
+[data-theme='hacker'][data-mode='light'] body::after {
+    background: repeating-linear-gradient(0deg, rgba(0, 60, 0, 0.07) 0 1px, transparent 1px 3px);
+}
+
+[data-theme='hacker'][data-mode='light'] a,
+[data-theme='hacker'][data-mode='light'] button.link {
+    text-shadow: none;
+}
+
+[data-theme='hacker'][data-mode='light'] .snowflake {
+    opacity: 0.35;
+}
+
+[data-theme='dracula'][data-mode='light'] {
+    --background: #fffbeb;
+    --panel: #f5f0dc;
+    --hover: #e8e2c9;
+    --lightgreen: #14710a;
+    --linkgreen: #036a96;
+    --highlightlinkgreen: #a3144d;
+    --staryellow: #846e15;
+    --unclaimedstar: #b8b29a;
+    --disabled: #cfc9b0;
+    --offwhite: #1f1f1f;
+    --dim: #6c664b;
+    --red: #cb3a2a;
+    --border: #dcd6bd;
+    --card-border: #b8b29a;
+    --snow: #644ac9;
+    --glow-accent: none;
+    --glow-star: none;
+}
+
+[data-theme='nord'][data-mode='light'] {
+    --background: #eceff4;
+    --panel: #e5e9f0;
+    --hover: #d8dee9;
+    --lightgreen: #4f7a3a;
+    --linkgreen: #5e81ac;
+    --highlightlinkgreen: #3f6490;
+    --staryellow: #b57f14;
+    --unclaimedstar: #c2cad8;
+    --disabled: #c2cad8;
+    --offwhite: #2e3440;
+    --dim: #6b7689;
+    --red: #bf616a;
+    --border: #d3dae6;
+    --card-border: #b9c2d2;
+    --snow: #88c0d0;
+}
+
+[data-theme='synthwave'][data-mode='light'] {
+    --background: #fdf4ff;
+    --panel: #fffaff;
+    --hover: #f6e1fb;
+    --lightgreen: #d6249f;
+    --linkgreen: #0e8f96;
+    --highlightlinkgreen: #b07a00;
+    --staryellow: #d99a00;
+    --unclaimedstar: #d9c4e8;
+    --disabled: #dccbe8;
+    --offwhite: #3b2a55;
+    --dim: #9a84b5;
+    --red: #e0553f;
+    --border: #ecd3f3;
+    --card-border: #d9b3e6;
+    --snow: #ff7edb;
+    --app-bg: linear-gradient(180deg, #fdf4ff 0%, #ffeefa 60%, #ffe3f1 100%) fixed;
+    --glow-accent: 0 0 6px rgba(255, 126, 219, 0.35);
+    --glow-star: none;
+}
+
+[data-theme='synthwave'][data-mode='light'] .day,
+[data-theme='synthwave'][data-mode='light'] .dashboard .tools {
+    box-shadow: 0 0 10px rgba(214, 36, 159, 0.15);
+}
+
+/* ---- frutiger aero at night: dark glass over an aurora ------------------------------------- */
+[data-theme='aero'][data-mode='dark'] {
+    --background: rgba(8, 22, 42, 0.35);
+    --panel: rgba(12, 30, 55, 0.55);
+    --hover: rgba(40, 80, 130, 0.6);
+    --lightgreen: #5fe08a;
+    --linkgreen: #6cc0ff;
+    --highlightlinkgreen: #a6dcff;
+    --staryellow: #ffc233;
+    --unclaimedstar: #3f6690;
+    --disabled: #35506e;
+    --offwhite: #e2f1ff;
+    --dim: #86a9cc;
+    --red: #ff7a66;
+    --border: rgba(110, 170, 230, 0.35);
+    --card-border: rgba(160, 210, 255, 0.35);
+    --snow: rgba(190, 225, 255, 0.8);
+    --app-bg: linear-gradient(160deg, #050f22 0%, #0b2a4d 40%, #0d3b4a 75%, #0a3a2c 100%) fixed;
+    --glow-accent: 0 0 8px rgba(110, 190, 255, 0.45);
+    --glow-star: 0 0 8px rgba(255, 190, 0, 0.6);
+}
+
+[data-theme='aero'][data-mode='dark'] body::before {
+    background:
+        radial-gradient(ellipse 45% 26% at 20% 18%, rgba(80, 220, 190, 0.28) 0%, rgba(80, 220, 190, 0.1) 50%, rgba(80, 220, 190, 0) 100%),
+        radial-gradient(ellipse 40% 22% at 72% 12%, rgba(110, 150, 255, 0.3) 0%, rgba(110, 150, 255, 0.1) 55%, rgba(110, 150, 255, 0) 100%),
+        radial-gradient(ellipse 50% 22% at 86% 44%, rgba(170, 110, 255, 0.16) 0%, rgba(170, 110, 255, 0) 100%),
+        radial-gradient(ellipse 60% 25% at 40% 105%, rgba(60, 200, 130, 0.3) 0%, rgba(60, 200, 130, 0.1) 45%, rgba(60, 200, 130, 0) 100%),
+        radial-gradient(circle at 92% 6%, rgba(230, 240, 255, 0.55) 0%, rgba(200, 220, 255, 0.14) 10%, rgba(200, 220, 255, 0) 24%);
+}
+
+[data-theme='aero'][data-mode='dark'] #topbar,
+[data-theme='aero'][data-mode='dark'] .panel .toolbar,
+[data-theme='aero'][data-mode='dark'] .menu .dropdown {
+    background: linear-gradient(180deg, rgba(70, 120, 180, 0.5) 0%, rgba(30, 60, 105, 0.5) 50%, rgba(14, 36, 70, 0.6) 51%, rgba(24, 56, 96, 0.55) 100%);
+}
+
+[data-theme='aero'][data-mode='dark'] #topbar {
+    border-bottom: 1px solid rgba(160, 210, 255, 0.35);
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.45);
+}
+
+[data-theme='aero'][data-mode='dark'] #topbar::after {
+    background: linear-gradient(100deg, rgba(255, 255, 255, 0) 0%, rgba(200, 230, 255, 0.22) 50%, rgba(255, 255, 255, 0) 100%);
+}
+
+[data-theme='aero'][data-mode='dark'] .dv-tabs-and-actions-container {
+    background: linear-gradient(180deg, rgba(50, 95, 150, 0.5) 0%, rgba(14, 36, 70, 0.55) 100%) !important;
+}
+
+[data-theme='aero'][data-mode='dark'] .dv-groupview {
+    box-shadow: inset 0 0 0 1px rgba(160, 210, 255, 0.25), 0 4px 18px rgba(0, 0, 0, 0.45);
+}
+
+[data-theme='aero'][data-mode='dark'] .dv-groupview::before {
+    background: linear-gradient(180deg, rgba(180, 220, 255, 0.1), rgba(255, 255, 255, 0));
+}
+
+[data-theme='aero'][data-mode='dark'] select,
+[data-theme='aero'][data-mode='dark'] input[type='text'],
+[data-theme='aero'][data-mode='dark'] input[type='password'],
+[data-theme='aero'][data-mode='dark'] input[type='number'],
+[data-theme='aero'][data-mode='dark'] textarea {
+    background: rgba(6, 18, 36, 0.7);
+    border-color: rgba(110, 170, 230, 0.5);
+}
+
+[data-theme='aero'][data-mode='dark'] .snowflake {
+    color: #bfe3ff;
+    opacity: 0.55;
+    text-shadow: 0 0 6px rgba(150, 210, 255, 0.7);
+}
+
+[data-theme='aero'][data-mode='dark'] .description em,
+[data-theme='aero'][data-mode='dark'] .header {
+    text-shadow: 0 0 8px rgba(110, 190, 255, 0.4);
+}
+
+[data-theme='aero'][data-mode='dark'] button.link,
+[data-theme='aero'][data-mode='dark'] #topbar a,
+[data-theme='aero'][data-mode='dark'] .day a,
+[data-theme='aero'][data-mode='dark'] .year-selector {
+    color: #d6ecff;
+    background: linear-gradient(180deg, #4d7fb8 0%, #2a5a94 48%, #173f73 52%, #2b639c 100%);
+    border: 1px solid rgba(150, 200, 250, 0.55);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.3);
+    text-shadow: 0 1px 1px rgba(0, 20, 50, 0.7);
+}
+
+[data-theme='aero'][data-mode='dark'] button.link:hover,
+[data-theme='aero'][data-mode='dark'] #topbar a:hover,
+[data-theme='aero'][data-mode='dark'] .day a:hover,
+[data-theme='aero'][data-mode='dark'] .year-selector:hover {
+    color: #ffffff;
+    background: linear-gradient(180deg, #62a0e0 0%, #3877bd 48%, #1f559a 52%, #3d83c9 100%);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.4), 0 0 0 3px rgba(110, 190, 255, 0.25);
+}
+
+[data-theme='aero'][data-mode='dark'] button.link:disabled,
+[data-theme='aero'][data-mode='dark'] a.disabled {
+    background: linear-gradient(180deg, #2a3b50, #1c2a3c);
+    color: #5d7690;
+    box-shadow: none;
+}
+
+[data-theme='aero'][data-mode='dark'] .year-selector.current,
+[data-theme='aero'][data-mode='dark'] button.link.current,
+[data-theme='aero'][data-mode='dark'] body.view-dashboard .view-link-dashboard,
+[data-theme='aero'][data-mode='dark'] body.view-editor .view-link-editor {
+    background: linear-gradient(180deg, #7fe3a8 0%, #2fb866 48%, #17964a 52%, #4fd086 100%);
+    color: #04210f;
+    text-shadow: 0 1px 0 rgba(255, 255, 255, 0.35);
+    border-color: #7fe3a8;
+}
+
+[data-theme='aero'][data-mode='dark'] .brand.header,
+[data-theme='aero'][data-mode='dark'] .dashboard-title {
+    background: linear-gradient(180deg, #b8f5cf 0%, #5fe08a 50%, #2fb866 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    filter: drop-shadow(0 0 6px rgba(95, 224, 138, 0.35));
+}
+
+[data-theme='aero'][data-mode='dark'] .dv-tab {
+    background: linear-gradient(180deg, rgba(70, 120, 180, 0.55), rgba(20, 48, 88, 0.6)) !important;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+[data-theme='aero'][data-mode='dark'] .dv-tab.dv-active-tab {
+    background: linear-gradient(180deg, #5b95d6 0%, #2f66a8 60%, #1f4f8c 100%) !important;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35), 0 -2px 8px rgba(80, 160, 255, 0.3);
+}
+
+[data-theme='aero'][data-mode='dark'] .day,
+[data-theme='aero'][data-mode='dark'] .dashboard .tools {
+    background: linear-gradient(180deg, rgba(70, 120, 180, 0.35) 0%, rgba(24, 56, 100, 0.35) 50%, rgba(10, 30, 60, 0.45) 51%, rgba(20, 50, 90, 0.4) 100%);
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.18);
+    border: 1px solid rgba(160, 210, 255, 0.35);
+}
+
+[data-theme='aero'][data-mode='dark'] .day.active {
+    box-shadow: 0 0 0 3px rgba(95, 224, 138, 0.45), 0 4px 14px rgba(0, 0, 0, 0.4);
+}
+
+[data-theme='aero'][data-mode='dark'] table.results th {
+    color: #6cc0ff;
+}
+
+[data-theme='aero'][data-mode='dark'] .panel .toolbar {
+    border-bottom: 1px solid rgba(160, 210, 255, 0.3);
+}
+
+[data-theme='aero'][data-mode='dark'] .claimed-stars {
+    color: #ffc233;
+    text-shadow: 0 0 8px rgba(255, 190, 0, 0.6);
+}
+
+/* ---- aquaq: the challenge hub is stock bootstrap, so this is too ---------------------------- */
+[data-theme='aquaq'] {
+    --background: #ffffff;
+    --panel: #f8f9fa;
+    --hover: #e9ecef;
+    --lightgreen: #28a745;
+    --linkgreen: #007bff;
+    --highlightlinkgreen: #0056b3;
+    --staryellow: #e0a800;
+    --unclaimedstar: #ced4da;
+    --disabled: #adb5bd;
+    --offwhite: #212529;
+    --dim: #6c757d;
+    --red: #dc3545;
+    --border: #dee2e6;
+    --card-border: #ced4da;
+    --snow: #9ec5fe;
+    --app-bg: var(--background);
+    --glow-accent: none;
+    --glow-star: none;
+    --font-ui: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    --font-mono: SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
+    --radius: 4px;
+    --panel-blur: none;
+}
+
+[data-theme='aquaq'][data-mode='dark'] {
+    --background: #212529;
+    --panel: #2b3035;
+    --hover: #343a40;
+    --lightgreen: #75b798;
+    --linkgreen: #6ea8fe;
+    --highlightlinkgreen: #9ec5fe;
+    --staryellow: #ffc107;
+    --unclaimedstar: #495057;
+    --disabled: #565e66;
+    --offwhite: #dee2e6;
+    --dim: #8a939b;
+    --red: #ea868f;
+    --border: #495057;
+    --card-border: #6c757d;
+    --snow: #6ea8fe;
+}
+
+/* the dark navbar of the site, in both modes: the bar gets its own palette */
+[data-theme='aquaq'] #topbar {
+    --panel: #495057;
+    --hover: #5a6268;
+    --offwhite: #f8f9fa;
+    --dim: #adb5bd;
+    --border: #6c757d;
+    --linkgreen: #9ec5fe;
+    --highlightlinkgreen: #ffffff;
+    --lightgreen: #ffffff;
+    --disabled: #6c757d;
+    --staryellow: #ffc107;
+    --unclaimedstar: #6c757d;
+    background: #343a40;
+    color: #f8f9fa;
+    border-bottom-color: #23272b;
+}
+
+[data-theme='aquaq'] #topbar .menu .dropdown {
+    background: #343a40;
+}
+
+/* headings are plain dark text on the site; green is kept for "it worked" */
+[data-theme='aquaq'] .header {
+    color: var(--offwhite);
+    font-weight: 500;
+}
+
+[data-theme='aquaq'] .day .header,
+[data-theme='aquaq'] .description h2 {
+    color: var(--linkgreen);
+}
+
+[data-theme='aquaq'] .dashboard-title {
+    font-weight: 300;
+    letter-spacing: -0.01em;
+}
+
+[data-theme='aquaq'] button.link::before,
+[data-theme='aquaq'] button.link::after,
+[data-theme='aquaq'] a.bracket::before,
+[data-theme='aquaq'] a.bracket::after {
+    content: none;
+}
+
+[data-theme='aquaq'] .deco {
+    display: none;
+}
+
+/* bootstrap's small outline buttons */
+[data-theme='aquaq'] button.link,
+[data-theme='aquaq'] a.bracket {
+    border: 1px solid var(--linkgreen);
+    border-radius: 0.25rem;
+    padding: 1px 9px;
+    color: var(--linkgreen);
+    background: transparent;
+    text-decoration: none;
+    transition: color 0.15s, background-color 0.15s, border-color 0.15s;
+}
+
+[data-theme='aquaq'] button.link:hover,
+[data-theme='aquaq'] a.bracket:hover,
+[data-theme='aquaq'] .year-selector.current,
+[data-theme='aquaq'] button.link.current,
+[data-theme='aquaq'] body.view-dashboard .view-link-dashboard,
+[data-theme='aquaq'] body.view-editor .view-link-editor {
+    background: var(--linkgreen);
+    border-color: var(--linkgreen);
+    color: #ffffff;
+    text-shadow: none;
+}
+
+[data-theme='aquaq'][data-mode='dark'] button.link:hover,
+[data-theme='aquaq'][data-mode='dark'] a.bracket:hover,
+[data-theme='aquaq'][data-mode='dark'] .year-selector.current,
+[data-theme='aquaq'][data-mode='dark'] button.link.current {
+    color: #0b1c33;
+}
+
+[data-theme='aquaq'] button.link:disabled,
+[data-theme='aquaq'] a.disabled {
+    border-color: var(--disabled);
+    background: transparent;
+}
+
+[data-theme='aquaq'] select,
+[data-theme='aquaq'] input[type='text'],
+[data-theme='aquaq'] input[type='password'],
+[data-theme='aquaq'] input[type='number'],
+[data-theme='aquaq'] textarea {
+    border-radius: 0.25rem;
+    background: var(--background);
+}
+
+[data-theme='aquaq'] #topbar select {
+    background: var(--panel);
+}
+
+[data-theme='aquaq'] select:focus,
+[data-theme='aquaq'] input:focus,
+[data-theme='aquaq'] textarea:focus {
+    outline: none;
+    border-color: #80bdff;
+    box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+}
+
+/* cards like bootstrap's, with the grey jumbotron tone for the tools box */
+[data-theme='aquaq'] .day {
+    border: 1px solid var(--border);
+    border-radius: 0.25rem;
+    background: var(--background);
+    transition: box-shadow 0.15s, border-color 0.15s;
+}
+
+[data-theme='aquaq'][data-mode='dark'] .day {
+    background: var(--panel);
+}
+
+[data-theme='aquaq'] .day:hover {
+    border-color: var(--linkgreen);
+    box-shadow: 0 0.25rem 0.75rem rgba(0, 0, 0, 0.12);
+}
+
+[data-theme='aquaq'] .day.active {
+    border-color: var(--linkgreen);
+    box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+}
+
+[data-theme='aquaq'] .dashboard .tools {
+    background: var(--hover);
+    border: 0;
+    border-radius: 0.3rem;
+    padding: 16px 20px;
+}
+
+[data-theme='aquaq'] table.results tbody tr:nth-child(odd) {
+    background: rgba(0, 0, 0, 0.04);
+}
+
+[data-theme='aquaq'][data-mode='dark'] table.results tbody tr:nth-child(odd) {
+    background: rgba(255, 255, 255, 0.04);
+}
+
+[data-theme='aquaq'] pre,
+[data-theme='aquaq'] code,
+[data-theme='aquaq'] .result-answer,
+[data-theme='aquaq'] .tests-input,
+[data-theme='aquaq'] textarea {
+    font-family: var(--font-mono);
+}
+
+/* a few bubbles drifting, for the name */
+[data-theme='aquaq'] .snowflake {
+    color: var(--snow);
+    opacity: 0.45;
+    text-shadow: none;
+}
+
+/* on the dark navbar the filled button is pale blue, so its label goes dark */
+[data-theme='aquaq'] #topbar button.link:hover,
+[data-theme='aquaq'] #topbar a.bracket:hover,
+[data-theme='aquaq'] #topbar button.link.current,
+[data-theme='aquaq'] body.view-dashboard #topbar .view-link-dashboard,
+[data-theme='aquaq'] body.view-editor #topbar .view-link-editor {
+    color: #0b1c33;
 }

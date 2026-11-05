@@ -69,10 +69,17 @@ const SECTIONS: { title: string; fields: Field[] }[] = [
         fields: [
             { key: 'theme', label: 'theme', type: 'select', options: THEMES.map((theme) => [theme.id, theme.name]) },
             {
+                key: 'themeMode',
+                label: 'mode',
+                type: 'select',
+                options: [['auto', 'automatic (follow the system)'], ['light', 'light'], ['dark', 'dark']],
+                hint: 'every theme has a light and a dark version',
+            },
+            {
                 key: 'themeFollowsSource',
                 label: 'match the theme to the site',
                 type: 'checkbox',
-                hint: 'advent of code and everybody codes puzzles switch to their own look; everything else uses the theme above',
+                hint: 'advent of code, everybody codes and aquaq puzzles switch to their own look (in the mode above); everything else uses the theme above',
             },
             { key: 'snowflakes', label: 'snowflakes', type: 'checkbox' },
         ],

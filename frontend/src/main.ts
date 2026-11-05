@@ -20,7 +20,7 @@ import { submissionsPanel } from './panels/submissions.ts';
 import { testsPanel } from './panels/tests.ts';
 import { settings } from './settings.ts';
 import { actions, firstPuzzle, getState, sourceInfo, subscribe } from './state.ts';
-import { activeThemeId, applyTheme, SOURCE_THEMES } from './themes.ts';
+import { activeThemeId, applyTheme, onSystemModeChange, resolveMode, SOURCE_THEMES } from './themes.ts';
 import { createTopbar } from './topbar.ts';
 import type { PuzzleRef } from './types.ts';
 import { Workspace } from './workspace.ts';
@@ -52,13 +52,13 @@ const puzzleHash = (puzzle: PuzzleRef) => `#/${encodeURIComponent(puzzle.source)
 
 const PARTICLE_GLYPHS: Record<string, string[]> = {
     aoc: ['*'],
-    light: ['*', '❄'],
     nord: ['❄', '*'],
     dracula: ['*'],
     hacker: ['0', '1', '0', '1', 'ｱ', 'ｶ', 'ﾊ', 'ﾏ', 'ﾔ', 'ﾗ', '7', '3'],
     synthwave: ['✦', '✧', '·'],
     aero: [''], // bubbles are drawn with css
     ec: ['✦', '·', '✧', '·'],
+    aquaq: ['°', '·', '•', '°'],
 };
 
 /**
@@ -91,20 +91,23 @@ const boot = async () => {
 
     /** the chosen theme, or the look of the site whose puzzles are on screen when that option is on */
     const syncTheme = () => {
-        const { theme, themeFollowsSource } = settings.get();
+        const { theme, themeMode, themeFollowsSource } = settings.get();
         const { puzzle, dashboardSource } = getState();
         const source = sourceInfo(view === 'editor' ? puzzle?.source : dashboardSource);
         const wanted = (themeFollowsSource && source && SOURCE_THEMES[source.provider.id]) || theme;
-        const applied = applyTheme(wanted); // not inside the call below: its arguments are skipped while there is no workspace
-        workspace?.setDark(applied.dark);
+        const mode = resolveMode(themeMode);
+        applyTheme(wanted, mode);
+        workspace?.setDark(mode === 'dark');
         localStorage.setItem('hub.theme.active', activeThemeId());
+        localStorage.setItem('hub.theme.mode', mode);
         renderSnowflakes();
     };
     syncTheme();
     settings.onChange((_next, changed) => {
-        if (changed.includes('theme') || changed.includes('themeFollowsSource') || changed.includes('snowflakes')) syncTheme();
+        if (['theme', 'themeMode', 'themeFollowsSource', 'snowflakes'].some((key) => changed.includes(key as keyof typeof _next))) syncTheme();
     });
     subscribe(syncTheme, ['hub', 'puzzle', 'dashboardSource']);
+    onSystemModeChange(syncTheme);
 
     const dashboardRoot = document.querySelector<HTMLElement>('#dashboard')!;
     const topbarRoot = document.querySelector<HTMLElement>('#topbar')!;

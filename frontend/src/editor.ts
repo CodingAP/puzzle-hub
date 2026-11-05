@@ -33,12 +33,14 @@ const configure = (monaco: MonacoApi) => {
     ts.typescriptDefaults.setDiagnosticsOptions({ diagnosticCodesToIgnore: [2307, 2792, 5097] });
 
     for (const theme of THEMES) {
-        monaco.editor.defineTheme(monacoThemeName(theme.id), {
-            base: theme.editor.base,
-            inherit: true,
-            rules: theme.editor.rules ?? [],
-            colors: theme.editor.colors,
-        });
+        for (const mode of ['light', 'dark'] as const) {
+            monaco.editor.defineTheme(monacoThemeName(theme.id, mode), {
+                base: mode === 'dark' ? 'vs-dark' : 'vs',
+                inherit: true,
+                rules: theme.editor[mode].rules ?? [],
+                colors: theme.editor[mode].colors,
+            });
+        }
     }
 };
 

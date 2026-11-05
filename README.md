@@ -159,7 +159,7 @@ The platform menu in the top right switches between sources in both views (the e
 - **Runner** streams console output while the solution runs; cancel kills the process. Profile averages over N iterations, rewrites the README's results table (everything from `%%%` on is your writeup and is left alone) and publishes the puzzle with git.
 - **Tests** runs example inputs: code blocks from the puzzle text are offered automatically, saved ones (with expected answers per part) live in `examples.json` next to the solution.
 - **Debugger** (module runners) works in any browser: breakpoints in the editor gutter, step, call stack, scopes, evaluate. It speaks the Chrome DevTools Protocol to Deno's inspector through a websocket the API proxies.
-- **Themes** in Settings → appearance. With "match the theme to the site" on, Advent of Code and Everybody Codes puzzles switch to their own look. A theme is a block of CSS variables in `frontend/static/styles.css` plus editor colours in `frontend/src/themes.ts`.
+- **Themes** in Settings → appearance: pick a theme, then its mode (light, dark, or automatic to follow the operating system); every theme has both. With "match the theme to the site" on, Advent of Code, Everybody Codes and AquaQ puzzles switch to their own look. A theme is two blocks of CSS variables in `frontend/static/styles.css` (`[data-theme='x']` and `[data-theme='x'][data-mode='light']` or `'dark'`) plus editor colours for both modes in `frontend/src/themes.ts`.
 
 The editor wants a desktop-sized screen; the dashboard works on a phone.
 

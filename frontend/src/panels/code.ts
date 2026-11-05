@@ -10,7 +10,7 @@ import { debugStore } from '../debugstore.ts';
 import { h, replace } from '../dom.ts';
 import { editorOptions, loadMonaco } from '../editor.ts';
 import { settings } from '../settings.ts';
-import { activeThemeId, monacoThemeName, onThemeChange } from '../themes.ts';
+import { monacoThemeName, onThemeChange } from '../themes.ts';
 import { actions, activeSource, getState, refKey, sameRef, subscribe } from '../state.ts';
 import type { PanelDefinition } from '../workspace.ts';
 
@@ -148,7 +148,7 @@ export const codePanel: PanelDefinition = {
 
                 showEditor();
                 if (!editor) {
-                    editor = monaco.editor.create(host, { ...options(), theme: monacoThemeName(activeThemeId()), language: 'typescript', value: '' });
+                    editor = monaco.editor.create(host, { ...options(), theme: monacoThemeName(), language: 'typescript', value: '' });
                     editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => save());
                     decorations = editor.createDecorationsCollection();
                     // clicking the glyph margin toggles a breakpoint for the debugger panel
@@ -215,7 +215,7 @@ export const codePanel: PanelDefinition = {
         const unsubscribes = [
             subscribe(load, ['puzzle', 'hub']),
             subscribe(() => renderPath(), ['detail']),
-            onThemeChange((id) => monaco?.editor.setTheme(monacoThemeName(id))),
+            onThemeChange((id, mode) => monaco?.editor.setTheme(monacoThemeName(id, mode))),
             debugStore.onChange(renderDecorations),
             // when a run auto-saved the pending code, reflect that here
             subscribe(() => {

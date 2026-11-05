@@ -167,14 +167,12 @@ export const createDashboard = (root: HTMLElement, openEditor: (puzzle: PuzzleRe
         }
         if (!source) return replace(totals, h('span', { className: 'dim' }, 'no puzzle repositories are mounted yet: list them in hub.json (see the readme).'));
         const here = starsOf(source.id);
-        const everywhere = hub.sources.reduce((sum, entry) => sum + starsOf(entry.id).stars, 0);
         const last = (dashboardSource && settings.get().lastBySource[dashboardSource]) || null;
         const lastSource = sourceInfo(last?.source);
         replace(
             totals,
             h('span', { className: 'claimed-stars' }, `${here.stars}/${here.max}`),
             ' stars',
-            hub.sources.length > 1 ? [' · all platforms: ', h('span', { className: 'claimed-stars' }, String(everywhere))] : null,
             ' · ',
             source.repository ? [h('a', { className: 'bracket', href: source.repository, target: '_blank', rel: 'noopener' }, 'repository'), ' '] : null,
             h(

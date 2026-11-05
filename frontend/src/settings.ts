@@ -4,6 +4,7 @@
  * user preferences persisted in localStorage
  */
 
+import type { ModeSetting } from './themes.ts';
 import type { Part, PuzzleRef } from './types.ts';
 
 export interface Settings {
@@ -21,6 +22,8 @@ export interface Settings {
     editorTabSize: number;
     snowflakes: boolean;
     theme: string;
+    /** light, dark, or whatever the operating system is set to */
+    themeMode: ModeSetting;
     /** switch to a site's own theme while one of its puzzles is on screen */
     themeFollowsSource: boolean;
     puzzlePanelMode: 'text' | 'website';
@@ -47,6 +50,7 @@ export const DEFAULT_SETTINGS: Settings = {
     editorTabSize: 4,
     snowflakes: true,
     theme: 'aoc',
+    themeMode: 'auto',
     themeFollowsSource: true,
     puzzlePanelMode: 'text',
     lastPuzzle: null,
@@ -59,7 +63,11 @@ type Listener = (settings: Settings, changed: (keyof Settings)[]) => void;
 const load = (): Settings => {
     try {
         const raw = localStorage.getItem(STORAGE_KEY);
-        return raw ? { ...DEFAULT_SETTINGS, ...JSON.parse(raw) } : { ...DEFAULT_SETTINGS };
+        if (!raw) return { ...DEFAULT_SETTINGS };
+        const stored = JSON.parse(raw);
+        // "light" used to be a theme of its own; it is now the light mode of the advent of code theme
+        if (stored.theme === 'light') Object.assign(stored, { theme: 'aoc', themeMode: 'light' });
+        return { ...DEFAULT_SETTINGS, ...stored };
     } catch {
         return { ...DEFAULT_SETTINGS };
     }

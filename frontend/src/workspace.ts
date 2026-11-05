@@ -5,7 +5,7 @@
  */
 
 import type { DockviewApi, DockviewGroupPanel, DockviewPanelApi, IContentRenderer, IHeaderActionsRenderer, SerializedDockview } from 'dockview-core';
-import { activeThemeId, getTheme } from './themes.ts';
+import { activeMode } from './themes.ts';
 
 /** the full umd build is loaded from the cdn in index.html because it embeds the stylesheet; the npm package only provides types */
 const dockview = (globalThis as unknown as Record<string, typeof import('dockview-core')>)['dockview-core'];
@@ -61,7 +61,7 @@ export class Workspace {
         for (const definition of definitions) this.definitions.set(definition.id, definition);
 
         this.dock = dockview.createDockview(root, {
-            theme: getTheme(activeThemeId()).dark ? dockview.themeDark : dockview.themeLight,
+            theme: activeMode() === 'dark' ? dockview.themeDark : dockview.themeLight,
             disableFloatingGroups: false,
             locked: this.lockedState,
             createComponent: ({ name }) => this.createRenderer(name),

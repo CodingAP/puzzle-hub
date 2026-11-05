@@ -18,10 +18,12 @@
         <!-- apply the theme that was last on screen before the first paint so there is no flash of the default colours -->
         <script>
         try {
-            document.documentElement.dataset.theme = localStorage.getItem('hub.theme.active') || JSON.parse(localStorage.getItem('hub.settings') || '{}').theme ||
-                'aoc';
+            const stored = JSON.parse(localStorage.getItem('hub.settings') || '{}');
+            document.documentElement.dataset.theme = localStorage.getItem('hub.theme.active') || stored.theme || 'aoc';
+            document.documentElement.dataset.mode = localStorage.getItem('hub.theme.mode') || (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
         } catch (_) {
             document.documentElement.dataset.theme = 'aoc';
+            document.documentElement.dataset.mode = 'dark';
         }
         </script>
         <!-- monaco is loaded through its amd loader; workers must be wrapped in a blob because they come from another origin -->
