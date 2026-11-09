@@ -67,6 +67,6 @@ export const setCredential = async (provider: string, value: string | null): Pro
     if (cleaned) local.credentials[provider] = { value: cleaned, updated: new Date().toISOString() };
     else delete local.credentials[provider];
     await ensureDir(dataDir);
-    await Deno.writeTextFile(LOCAL_CONFIG_PATH, JSON.stringify(local, null, 4) + '\n');
+    await Deno.writeTextFile(LOCAL_CONFIG_PATH, JSON.stringify(local, null, 4) + '\n', { mode: 0o600 });
     return getCredentialInfo(provider);
 };

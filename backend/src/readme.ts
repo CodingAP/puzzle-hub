@@ -11,6 +11,10 @@ export const WRITEUP_MARKER = '%%%';
 
 export type ReadmeResults = Record<string, { answer: string; timeMs: number } | undefined>;
 
+/** a pipe or a line break in an answer would end its table cell early */
+const escapeCell = (text: string) => text.replace(/\|/g, '\\|').replace(/\r?\n/g, '<br>');
+const unescapeCell = (cell: string) => cell.replace(/\\\|/g, '|').replace(/<br\s*\/?>/gi, '\n');
+
 /**
  * builds the readme: generated header + results table, then whatever writeup the existing readme already had
  */
@@ -19,7 +23,7 @@ export const renderReadme = (source: Source, group: string, puzzle: number, titl
     const cell = (part: number, field: 'answer' | 'time') => {
         const result = results[`part${part}`];
         if (!result) return 'n/a';
-        return field === 'answer' ? result.answer : result.timeMs.toFixed(2);
+        return field === 'answer' ? escapeCell(result.answer) : result.timeMs.toFixed(2);
     };
 
     const header = `${source.provider.heading(group, puzzle, title)}
@@ -75,8 +79,8 @@ export const parseReadme = (readme: string): { title: string | null; answers: Re
     const empty = (value: string) => value === '' || /^n\/?a$/i.test(value) || value.startsWith('%') || value === '-';
     const row = readme.split('\n').find((line) => /^\|\s*\*\*Results?\*\*\s*\|/i.test(line.trim()));
     if (row) {
-        row.trim().replace(/^\|/, '').replace(/\|$/, '').split('|').slice(1).forEach((cell, index) => {
-            const value = cell.trim().replace(/^`(.*)`$/, '$1');
+        row.trim().replace(/^\|/, '').replace(/\|$/, '').split(/(?<!\\)\|/).slice(1).forEach((cell, index) => {
+            const value = unescapeCell(cell.trim().replace(/^`(.*)`$/, '$1'));
             if (!empty(value)) answers[index + 1] = value;
         });
     } else {

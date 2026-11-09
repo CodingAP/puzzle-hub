@@ -35,6 +35,12 @@ import { HttpError, json, type Params, readJson, Router, text } from './router.t
 
 const PUZZLE = '/api/sources/:source/puzzles/:group/:puzzle';
 
+/** the folder of a puzzle relative to its repository, and its page there (HEAD follows the default branch, whatever it is called) */
+const puzzleLocation = (source: Source, group: string, puzzle: number): { path: string; repositoryUrl: string | null } => {
+    const path = puzzlePaths(source, group, puzzle).directory.slice(source.root.length + 1);
+    return { path, repositoryUrl: source.repository ? `${source.repository}/tree/HEAD/${path}` : null };
+};
+
 const parsePuzzle = async (params: Params): Promise<{ source: Source; group: string; puzzle: number }> => {
     const source = await getSource(params.source);
     const puzzle = Number(params.puzzle);
@@ -90,8 +96,7 @@ export const createApiRouter = (): Router => {
     router.get('/api/sources/:source/groups/:group', async (_request, params) => {
         const source = await getSource(params.source);
         const puzzles = await listGroup(source, params.group);
-        // the folder of each puzzle relative to the repository, for "source code" links
-        return json(puzzles.map((puzzle) => ({ ...puzzle, path: puzzlePaths(source, params.group, puzzle.puzzle).directory.slice(source.root.length + 1) })));
+        return json(puzzles.map((puzzle) => ({ ...puzzle, ...puzzleLocation(source, params.group, puzzle.puzzle) })));
     });
 
     router.get('/api/sources/:source/credential', async (_request, params) => {
@@ -110,8 +115,7 @@ export const createApiRouter = (): Router => {
     router.get(PUZZLE, async (_request, params) => {
         const { source, group, puzzle } = await parsePuzzle(params);
         const detail = await getPuzzleDetail(source, group, puzzle);
-        const directory = puzzlePaths(source, group, puzzle).directory.slice(source.root.length + 1);
-        return json({ ...detail, path: directory, repositoryUrl: source.repository ? `${source.repository}/tree/main/${directory}` : null });
+        return json({ ...detail, ...puzzleLocation(source, group, puzzle) });
     });
 
     router.post(`${PUZZLE}/fetch`, async (request, params) => {

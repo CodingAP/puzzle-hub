@@ -106,7 +106,8 @@ export const runnerPanel: PanelDefinition = {
             const part = submitPart.value as Part;
             const recordOnly = record.checked || !source?.capabilities.submit;
             if (settings.get().confirmSubmit && !recordOnly) {
-                const label = part === 'all' ? (source && source.parts > 1 ? 'every part' : 'the answer') : `part ${part}`;
+                // submitting every part sends one new answer per press: the first part that is not solved yet
+                const label = part === 'all' ? (source && source.parts > 1 ? 'the next unsolved part' : 'the answer') : `part ${part}`;
                 const where = `${(getState().groups[target.source]?.length ?? 0) > 1 ? `${target.group} ` : ''}${
                     puzzleLabel(source, target.puzzle).toLowerCase()
                 }`;

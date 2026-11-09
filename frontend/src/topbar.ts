@@ -305,11 +305,11 @@ export const createTopbar = (root: HTMLElement, { getWorkspace }: TopbarOptions)
     };
 
     const renderStatus = () => {
-        const { dirty, running, lastError } = getState();
+        const { dirty, pendingReadme, running, lastError } = getState();
         replace(
             status,
             running ? h('span', { className: 'spinner', title: 'running' }) : null,
-            dirty ? h('span', { className: 'dot', title: 'unsaved changes' }) : null,
+            dirty || pendingReadme !== null ? h('span', { className: 'dot', title: 'unsaved changes' }) : null,
             lastError
                 ? h(
                     'button',
@@ -321,7 +321,7 @@ export const createTopbar = (root: HTMLElement, { getWorkspace }: TopbarOptions)
     };
 
     subscribe(renderPuzzle, ['hub', 'groups', 'puzzle', 'detail', 'detailError', 'view', 'dashboardSource']);
-    subscribe(renderStatus, ['dirty', 'running', 'lastError']);
+    subscribe(renderStatus, ['dirty', 'pendingReadme', 'running', 'lastError']);
     renderPuzzle();
     renderStatus();
 };

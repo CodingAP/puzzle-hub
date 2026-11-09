@@ -77,10 +77,10 @@ export const createPuzzleGrid = (onSelect: (puzzle: PuzzleRef) => void, options:
                 h('span', { className: `header title${started ? '' : ' disabled'}` }, puzzle.title ? `${label} - ${puzzle.title}` : label),
                 stars(puzzle.stars, source?.parts ?? 2),
                 h('br'),
-                source?.repository
+                puzzle.repositoryUrl
                     ? h('a', {
                         className: `bracket${puzzle.hasSolution ? '' : ' disabled'}`,
-                        href: `${source.repository}/tree/main/${puzzle.path}`,
+                        href: puzzle.repositoryUrl,
                         target: '_blank',
                         rel: 'noopener',
                         onClick: stop,
@@ -128,10 +128,11 @@ export const createPuzzleGrid = (onSelect: (puzzle: PuzzleRef) => void, options:
         }, ['groups']),
         // a detail refresh means something may have changed (fetch, stars) so reload that group
         subscribe(() => {
-            const { puzzle } = getState();
-            if (!puzzle) return;
-            if (puzzle.source === shownSource && puzzle.group === shownGroup) show(shownSource, shownGroup, true);
-            else cache.delete(`${puzzle.source}/${puzzle.group}`);
+            const { puzzle, detail, view } = getState();
+            if (!puzzle || !detail) return; // detail is only cleared while a puzzle is being opened: the new one follows
+            if (puzzle.source !== shownSource || puzzle.group !== shownGroup) cache.delete(`${puzzle.source}/${puzzle.group}`);
+            // the dashboard reloads its grid whenever it comes back on screen, so behind the editor it has nothing to do
+            else if (options.followEditor || view === 'dashboard') show(shownSource, shownGroup, true);
         }, ['detail']),
         subscribe(() => {
             const { puzzle } = getState();

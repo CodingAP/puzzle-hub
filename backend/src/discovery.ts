@@ -102,9 +102,3 @@ export const discoveredGroups = async (source: Source): Promise<GroupInfo[] | nu
     applyTitles(source, entry);
     return entry.groups;
 };
-
-/** when the site was last asked, for display */
-export const discoveryInfo = async (source: Source): Promise<{ fetchedAt: string } | null> => {
-    const entry = (await load())[source.provider.id];
-    return entry ? { fetchedAt: entry.fetchedAt } : null;
-};

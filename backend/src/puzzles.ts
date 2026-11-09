@@ -17,10 +17,10 @@ import {
     storeTitle,
 } from './db.ts';
 import { ensureDir, exists, readTextOrNull } from './fs.ts';
+import { range } from './providers/mod.ts';
 import { listGroupInfos, providerContext, puzzlePaths, type Source } from './sources.ts';
 import { solutionTemplate } from './templates.ts';
 
-const range = (count: number) => Array.from({ length: count }, (_, index) => index + 1);
 const parentOf = (path: string) => path.slice(0, path.lastIndexOf('/'));
 
 /**
@@ -51,7 +51,7 @@ export interface PuzzleStatus {
 
 export const getPuzzleStatus = async (source: Source, group: string, puzzle: number): Promise<PuzzleStatus> => {
     const paths = puzzlePaths(source, group, puzzle);
-    const inputParts = source.perPartInput ? range(source.parts) : [1];
+    const inputParts = source.perPartInput ? range(1, source.parts) : [1];
     const [hasSolution, hasReadme, hasDescription, ...inputs] = await Promise.all([
         exists(paths.solution),
         exists(paths.readme),

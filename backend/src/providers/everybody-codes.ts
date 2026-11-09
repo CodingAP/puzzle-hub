@@ -6,7 +6,16 @@
  * come from the api once a part is unlocked.
  */
 
-import { type GroupInfo, MissingCredentialError, type Provider, type ProviderContext, range, type SubmitResult } from './mod.ts';
+import {
+    fetchTimeout,
+    type GroupInfo,
+    MissingCredentialError,
+    type Provider,
+    type ProviderContext,
+    range,
+    RejectedCredentialError,
+    type SubmitResult,
+} from './mod.ts';
 
 const BASE = 'https://everybody.codes';
 const API = 'https://api.everybody.codes';
@@ -50,7 +59,7 @@ interface QuestState {
 /** an api call that must be logged in; the site answers with a web page instead of json when the cookie is not accepted */
 const apiJson = async <T>(context: ProviderContext, path: string, init: RequestInit = {}): Promise<T> => {
     if (!context.session) throw new MissingCredentialError(everybodyCodes);
-    const response = await fetch(`${API}/${path}`, { ...init, headers: { ...headers(context), ...(init.headers ?? {}) } });
+    const response = await fetch(`${API}/${path}`, { ...init, headers: { ...headers(context), ...(init.headers ?? {}) }, signal: fetchTimeout() });
     const text = await response.text();
     try {
         const parsed = JSON.parse(text);
@@ -58,7 +67,7 @@ const apiJson = async <T>(context: ProviderContext, path: string, init: RequestI
         return parsed as T;
     } catch (error) {
         if (error instanceof SyntaxError) {
-            throw new Error(`everybody.codes did not answer ${path} with data (${response.status}): the cookie is probably expired or wrong`);
+            throw new RejectedCredentialError(`everybody.codes did not answer ${path} with data (${response.status}): the cookie is probably expired or wrong`);
         }
         throw error;
     }
@@ -82,14 +91,14 @@ const fetchSeed = async (context: ProviderContext): Promise<number> => {
     const known = seeds.get(context.session);
     if (known !== undefined) return known;
     const { seed } = await apiJson<{ seed?: number }>(context, 'user/me');
-    if (typeof seed !== 'number') throw new Error('everybody.codes did not return your profile (the cookie is probably expired or wrong)');
+    if (typeof seed !== 'number') throw new RejectedCredentialError('everybody.codes did not return your profile (the cookie is probably expired or wrong)');
     seeds.set(context.session, seed);
     return seed;
 };
 
 /** an encrypted asset file; null when it does not exist (the site serves its web page for unknown paths) */
 const fetchAsset = async (context: ProviderContext, path: string): Promise<Record<string, string> | null> => {
-    const response = await fetch(`${ASSETS}/${path}`, { headers: { 'User-Agent': context.userAgent } });
+    const response = await fetch(`${ASSETS}/${path}`, { headers: { 'User-Agent': context.userAgent }, signal: fetchTimeout() });
     if (!response.ok) return null;
     try {
         return await response.json();
@@ -142,10 +151,10 @@ export const everybodyCodes: Provider = {
      */
     async discover(context, now = new Date()) {
         const request = { headers: { 'User-Agent': context.userAgent } };
-        const page = await (await fetch(BASE, request)).text();
+        const page = await (await fetch(BASE, { ...request, signal: fetchTimeout() })).text();
         const script = page.match(/src="\/?(main\.[^"]+\.js)"/)?.[1];
         if (!script) return null;
-        const code = await (await fetch(`${BASE}/${script}`, request)).text();
+        const code = await (await fetch(`${BASE}/${script}`, { ...request, signal: fetchTimeout() })).text();
 
         const events: GroupInfo[] = [];
         const stories: GroupInfo[] = [];
@@ -157,18 +166,19 @@ export const everybodyCodes: Provider = {
             const previous = index > 0 ? calendars[index - 1].index! : -1;
             const image = images.findLast((candidate) => candidate.index! < calendar.index! && candidate.index! > previous);
             if (!image || (image[1] !== 'events' && image[1] !== 'stories')) continue;
-            const match = [calendar[0], image[1], image[2], calendar[1]];
+            const [, kind, number] = image;
+            const quests = calendar[1];
             const released: number[] = [];
-            for (const [, quest, opens] of match[3].matchAll(/(\d+):([\d.e]+)/g)) {
+            for (const [, quest, opens] of quests.matchAll(/(\d+):([\d.e]+)/g)) {
                 const time = Number(opens);
                 if (time <= now.getTime()) released.push(Number(quest));
                 else next = Math.min(next, time);
             }
             if (!released.length) continue;
-            const event = match[1] === 'events';
+            const event = kind === 'events';
             (event ? events : stories).push({
-                id: `${event ? 'event' : 'story'}${match[2]}`,
-                label: `${event ? 'Event' : 'Story'} ${match[2]}`,
+                id: `${event ? 'event' : 'story'}${number}`,
+                label: `${event ? 'Event' : 'Story'} ${number}`,
                 puzzles: released.sort((a, b) => a - b),
             });
         }
@@ -250,17 +260,12 @@ export const everybodyCodes: Provider = {
         const accepted = (await fetchQuest(context, id, puzzle))[`answer${part}` as keyof QuestState];
         if (accepted !== undefined && accepted !== null && String(accepted) !== '') return String(accepted) === answer ? 'correct' : 'already-solved';
 
-        let verdict: { correct?: boolean; penaltyLeftMs?: number };
-        try {
-            verdict = await apiJson(context, `event/${id}/quest/${puzzle}/part/${part}/answer`, {
-                method: 'POST',
-                headers: { 'content-type': 'application/json' },
-                body: JSON.stringify({ answer }),
-            });
-        } catch (error) {
-            if (error instanceof MissingCredentialError) throw error;
-            return 'unknown';
-        }
+        // an expired cookie or a network failure is an error with its own message, not an "unknown response"
+        const verdict = await apiJson<{ correct?: boolean; penaltyLeftMs?: number }>(context, `event/${id}/quest/${puzzle}/part/${part}/answer`, {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({ answer }),
+        });
         questCache.clear(); // the next look at the quest should see the new part
         if (verdict.correct === true) return 'correct';
         if (verdict.correct === false) return 'incorrect';

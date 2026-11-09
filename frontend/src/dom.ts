@@ -56,8 +56,6 @@ export const replace = (element: Element, ...children: Child[]) => {
     for (const child of children) append(element, child);
 };
 
-export const pad = (day: number) => String(day).padStart(2, '0');
-
 export const formatDate = (iso: string) => {
     const date = new Date(iso);
     return Number.isNaN(date.getTime()) ? iso : date.toLocaleString();

@@ -22,6 +22,8 @@ export interface State {
     detailError: string | null;
     dirty: boolean;
     pendingCode: string | null;
+    /** the readme as edited in its panel; null when nothing is unsaved */
+    pendingReadme: string | null;
     running: boolean;
     lastRun: RunOutcome | null;
     lastSubmit: SubmitOutcome | null;
@@ -43,6 +45,7 @@ let state: State = {
     detailError: null,
     dirty: false,
     pendingCode: null,
+    pendingReadme: null,
     running: false,
     lastRun: null,
     lastSubmit: null,
@@ -149,15 +152,19 @@ export const actions = {
     },
 
     /**
-     * switches puzzle (asking first when the editor has unsaved changes) and reloads its detail
+     * switches puzzle (asking first when the editor or the readme has unsaved changes) and reloads its detail
      */
     async selectPuzzle(puzzle: PuzzleRef, { force = false } = {}): Promise<boolean> {
-        if (!force && sameRef(puzzle, state.puzzle) && state.detail) return true;
-        if (state.dirty && !sameRef(puzzle, state.puzzle)) {
-            if (!confirm('you have unsaved changes in the editor. discard them?')) return false;
+        const same = sameRef(puzzle, state.puzzle);
+        if (!force && same && state.detail) return true;
+        const unsaved = [state.dirty ? 'the editor' : '', state.pendingReadme !== null ? 'the readme' : ''].filter(Boolean);
+        if (!same && unsaved.length) {
+            if (!confirm(`you have unsaved changes in ${unsaved.join(' and ')}. discard them?`)) return false;
         }
 
-        update({ puzzle, dirty: false, pendingCode: null, detail: null, detailError: null, lastRun: null, lastSubmit: null, lastError: null });
+        // reloading the puzzle that is already open (the token or api url changed) keeps what is unsaved in it
+        const edits = same ? {} : { dirty: false, pendingCode: null, pendingReadme: null };
+        update({ puzzle, ...edits, detail: null, detailError: null, lastRun: null, lastSubmit: null, lastError: null });
         settings.set({ lastPuzzle: puzzle, lastBySource: { ...settings.get().lastBySource, [puzzle.source]: puzzle } });
         await this.refreshDetail();
         return true;
@@ -180,9 +187,11 @@ export const actions = {
     },
 
     async saveSolution(): Promise<void> {
-        if (state.pendingCode === null || !state.puzzle) return;
-        await api.saveSolution(state.puzzle, state.pendingCode);
-        update({ pendingCode: null, dirty: false });
+        const code = state.pendingCode;
+        if (code === null || !state.puzzle) return;
+        await api.saveSolution(state.puzzle, code);
+        // edits typed while the save was under way were not sent: they stay pending
+        if (state.pendingCode === code) update({ pendingCode: null, dirty: false });
     },
 
     /** scaffolds the puzzle; resolves with the input warning (if any) so panels can show it */
@@ -213,6 +222,8 @@ export const actions = {
         update({ running: true, lastError: null, lastSubmit: null });
         try {
             await this.saveSolution();
+            // profile regenerates the readme's table on the server, around the writeup as it is on disk
+            if (options.updateReadme) await this.saveReadme();
             const outcome = await api.runStream(target, { ...options, timeoutMs: settings.get().runTimeoutMs }, handlers, signal);
             update({ lastRun: outcome });
             return outcome;
@@ -263,6 +274,20 @@ export const actions = {
             await this.refreshDetail();
             await this.loadGroups(target.source);
         }
+    },
+
+    /** the readme panel reports edits here so they are not lost when the puzzle changes, the page closes or profile rewrites the file */
+    setPendingReadme(text: string | null): void {
+        update({ pendingReadme: text });
+    },
+
+    async saveReadme(): Promise<void> {
+        const target = state.puzzle;
+        const text = state.pendingReadme;
+        if (text === null || !target) return;
+        await api.saveReadme(target, text);
+        // anything typed while the request was out is still unsaved
+        if (state.pendingReadme === text && sameRef(target, state.puzzle)) update({ pendingReadme: null });
     },
 
     clearError(): void {

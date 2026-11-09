@@ -54,6 +54,8 @@ export const testsPanel: PanelDefinition = {
         let suggested: Example[] = [];
         let selection: Selection = { kind: 'new' };
         let loadedFor = '';
+        /** whether the puzzle text existed at the last load (null while one is under way) */
+        let hadDescription: boolean | null = null;
 
         const picker = h('select', { title: 'example to run' }) as HTMLSelectElement;
         const name = h('input', { type: 'text', placeholder: 'name', title: 'example name' });
@@ -269,6 +271,7 @@ export const testsPanel: PanelDefinition = {
             const key = refKey(puzzle);
             if (!force && key === loadedFor) return;
             loadedFor = key;
+            hadDescription = null;
             part.sync();
             renderExpected();
             debugButton.style.display = activeSource()?.capabilities.debug === false ? 'none' : '';
@@ -277,8 +280,12 @@ export const testsPanel: PanelDefinition = {
                 if (loadedFor !== key) return;
                 saved = examples;
                 suggested = description ? suggestionsFrom(description) : [];
-                select(saved.length ? { kind: 'saved', index: 0 } : suggested.length ? { kind: 'suggested', index: 0 } : { kind: 'new' });
+                hadDescription = description !== null;
+                // a reload for new puzzle text only adds suggestions: an example that is being typed stays as it is
+                if (force && input.value) renderPicker();
+                else select(saved.length ? { kind: 'saved', index: 0 } : suggested.length ? { kind: 'suggested', index: 0 } : { kind: 'new' });
             } catch (error) {
+                if (loadedFor === key) hadDescription = false; // the next detail refresh may try again
                 loadedFor = '';
                 setStatus(error instanceof Error ? error.message : String(error), 'error');
             }
@@ -319,9 +326,9 @@ export const testsPanel: PanelDefinition = {
         const unsubscribes = [
             subscribe(() => load(), ['puzzle', 'hub']),
             subscribe(() => {
-                // puzzle text may have been fetched after we loaded: pick up new suggestions
+                // puzzle text may have been fetched after we loaded: pick up new suggestions (once, when it first appears)
                 const { detail } = getState();
-                if (detail?.hasDescription && suggested.length === 0) load(true);
+                if (detail?.hasDescription && hadDescription === false) load(true);
             }, ['detail']),
             subscribe(() => {
                 runButton.disabled = debugButton.disabled = getState().running;

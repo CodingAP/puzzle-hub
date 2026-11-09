@@ -4,6 +4,7 @@
  * one-at-a-time background job that downloads inputs (and puzzle text) for every published puzzle of a source
  */
 
+import { MissingCredentialError, RejectedCredentialError } from './providers/mod.ts';
 import { fetchDescription, getPuzzleStatus, getTitle, updateInputs } from './puzzles.ts';
 import { listGroupInfos, type Source } from './sources.ts';
 
@@ -48,9 +49,20 @@ export const getBulkStatus = (): BulkStatus => ({ ...status, errors: [...status.
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
+/** a download followed by the pause, whether it worked or not: a failing job must not hammer the site either */
+const politely = async (download: () => Promise<unknown>): Promise<void> => {
+    try {
+        await download();
+    } finally {
+        await sleep(DELAY_MS);
+    }
+};
+
 const runJob = async (source: Source, options: BulkOptions, onProgress?: (status: BulkStatus) => void) => {
     const puzzles = (await listGroupInfos(source)).flatMap((group) => group.puzzles.map((puzzle) => ({ group: group.id, puzzle })));
     status.total = puzzles.length;
+
+    let credentialFailed = false;
 
     for (const { group, puzzle } of puzzles) {
         status.current = `${group} ${source.labels.puzzle} ${puzzle}`;
@@ -60,23 +72,31 @@ const runJob = async (source: Source, options: BulkOptions, onProgress?: (status
             let touched = false;
 
             if (options.inputs && source.provider.fetchInputs && (!options.onlyMissing || current.inputs.some((present) => !present))) {
-                await updateInputs(source, group, puzzle);
+                await politely(() => updateInputs(source, group, puzzle));
                 touched = true;
-                await sleep(DELAY_MS);
             }
             if (options.descriptions && source.provider.fetchDescription && (!options.onlyMissing || !current.hasDescription)) {
-                await fetchDescription(source, group, puzzle);
-                await getTitle(source, group, puzzle);
+                await politely(async () => {
+                    await fetchDescription(source, group, puzzle);
+                    await getTitle(source, group, puzzle);
+                });
                 touched = true;
-                await sleep(DELAY_MS);
             }
 
             if (touched) status.downloaded++;
             else status.skipped++;
         } catch (error) {
             status.errors.push(`${status.current}: ${error instanceof Error ? error.message : String(error)}`);
+            // a missing or rejected credential fails every other puzzle the same way: stop asking the site
+            credentialFailed = error instanceof MissingCredentialError || error instanceof RejectedCredentialError;
         }
         status.done++;
+
+        if (credentialFailed) {
+            const left = puzzles.length - status.done;
+            if (left > 0) status.errors.push(`stopped with ${left} puzzle${left === 1 ? '' : 's'} left: fix the credential, then start again`);
+            break;
+        }
     }
 
     status.running = false;

@@ -21,6 +21,10 @@ export const dataDir = Deno.env.get('HUB_DATA_DIR') ?? join(hubRoot, 'data');
 export const env = {
     apiToken: () => Deno.env.get('API_TOKEN') || undefined,
     port: () => Number(Deno.env.get('PORT') ?? 8000),
+    /** HOST as the operator set it, if they did */
+    explicitHost: () => Deno.env.get('HOST') || undefined,
+    /** the address to listen on: without a token nothing protects the api, so only this machine may reach it */
+    host: () => env.explicitHost() ?? (env.apiToken() ? '0.0.0.0' : '127.0.0.1'),
     runTimeoutMs: () => Number(Deno.env.get('RUN_TIMEOUT_MS') ?? 120_000),
     /** v8 heap cap for a solution run; a runaway solution dies with an out-of-memory error instead of taking the machine down */
     runMaxMemoryMb: () => Number(Deno.env.get('RUN_MAX_MEMORY_MB') ?? 2048),

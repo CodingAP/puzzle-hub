@@ -51,12 +51,14 @@ export const codePanel: PanelDefinition = {
     title: 'Code',
     create(container) {
         let editor: Monaco.editor.IStandaloneCodeEditor | null = null;
-        let monaco: Monaco.editor.IStandaloneCodeEditor extends never ? never : typeof Monaco | null = null;
+        let monaco: typeof Monaco | null = null;
         let savedCode: string | null = null;
         let loadedFor = '';
         let disposed = false;
         let zoom = 1;
         let decorations: Monaco.editor.IEditorDecorationsCollection | null = null;
+        /** the text a run or submit took along to save first; until that is accounted for the file may hold it instead of savedCode */
+        let sent: string | null = null;
 
         const options = () => {
             const base = editorOptions(settings.get());
@@ -86,9 +88,13 @@ export const codePanel: PanelDefinition = {
             if (!target) return;
             try {
                 await api.saveSolution(target, code);
+                if (loadedFor !== refKey(target)) return; // another puzzle was opened meanwhile: the editor is no longer this file
                 savedCode = code;
-                actions.setPendingCode(null);
-                setStatus('saved', 'ok');
+                sent = null;
+                // text typed while the save was under way was not sent: it stays pending
+                const latest = editor.getValue();
+                actions.setPendingCode(latest === code ? null : latest);
+                setStatus(latest === code ? 'saved' : 'unsaved changes', latest === code ? 'ok' : '');
             } catch (error) {
                 setStatus(error instanceof Error ? error.message : String(error), 'error');
             }
@@ -112,6 +118,7 @@ export const codePanel: PanelDefinition = {
             loadedFor = key;
             path.textContent = '';
             savedCode = null;
+            sent = null;
             setStatus('loading…');
             showOverlay('loading…');
 
@@ -161,7 +168,8 @@ export const codePanel: PanelDefinition = {
                     });
                     editor.onDidChangeModelContent(() => {
                         if (savedCode === null) return;
-                        const dirty = editor!.getValue() !== savedCode;
+                        // while an auto-save is unaccounted for, the file may not be savedCode any more: any text counts as unsaved
+                        const dirty = sent !== null || editor!.getValue() !== savedCode;
                         actions.setPendingCode(dirty ? editor!.getValue() : null);
                         setStatus(dirty ? 'unsaved changes' : 'saved', dirty ? '' : 'ok');
                     });
@@ -217,12 +225,25 @@ export const codePanel: PanelDefinition = {
             subscribe(() => renderPath(), ['detail']),
             onThemeChange((id, mode) => monaco?.editor.setTheme(monacoThemeName(id, mode))),
             debugStore.onChange(renderDecorations),
-            // when a run auto-saved the pending code, reflect that here
+            // a run or submit saves the pending code first: note what it takes along
             subscribe(() => {
-                const { dirty, pendingCode } = getState();
-                if (!dirty && editor && savedCode !== null && pendingCode === null && editor.getValue() !== savedCode) {
-                    savedCode = editor.getValue();
+                const { running, pendingCode } = getState();
+                if (running) sent = pendingCode;
+            }, ['running']),
+            // the pending code was cleared somewhere else while the editor may still differ from the file
+            subscribe(() => {
+                const { dirty, pendingCode, puzzle, running } = getState();
+                if (dirty || pendingCode !== null || !editor || savedCode === null || loadedFor !== refKey(puzzle)) return;
+                const code = editor.getValue();
+                if (code === savedCode && sent === null) return;
+                if (running && code === sent) {
+                    // the auto-save wrote exactly this text (it only clears what it sent): reflect that here
+                    savedCode = code;
+                    sent = null;
                     setStatus('saved', 'ok');
+                } else {
+                    // nothing wrote it (the same puzzle was reloaded, say): the text is still unsaved
+                    actions.setPendingCode(code);
                 }
             }, ['dirty']),
             settings.onChange(() => editor?.updateOptions(options())),

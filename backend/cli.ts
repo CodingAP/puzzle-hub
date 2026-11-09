@@ -141,7 +141,10 @@ const commands: Record<string, CommandInfo> = {
                 onLog: (line) => console.log(line),
                 onInspector: () => log(`debugger listening on ${hl(`127.0.0.1:${DEBUG_PORT}`)}: open ${hl('chrome://inspect')} and press resume`),
             });
-            if (!outcome.success) return fail(outcome.error ?? 'unknown error');
+            if (!outcome.success) {
+                Deno.exitCode = 1;
+                return fail(outcome.error ?? 'unknown error');
+            }
             printRun(outcome.results);
         },
     },
@@ -158,7 +161,10 @@ const commands: Record<string, CommandInfo> = {
                 updateReadme: true,
                 commit: args.push === 'true',
             });
-            if (!outcome.success) return fail(outcome.error ?? 'unknown error');
+            if (!outcome.success) {
+                Deno.exitCode = 1;
+                return fail(outcome.error ?? 'unknown error');
+            }
             printRun(outcome.results);
             log(`profiling complete! results are in the ${hl('readme')} in the solution directory!`);
             if (outcome.git) (outcome.git.pushed || !outcome.git.committed ? log : fail)(`git: ${outcome.git.message}`);

@@ -4,7 +4,6 @@
  * edit the puzzle README.md (results table + writeup after %%%)
  */
 
-import { api } from '../api.ts';
 import { h } from '../dom.ts';
 import { actions, getState, refKey, subscribe } from '../state.ts';
 import type { PanelDefinition } from '../workspace.ts';
@@ -20,32 +19,44 @@ export const readmePanel: PanelDefinition = {
         });
         const status = h('span', { className: 'dim' });
         const saveButton = h('button', { className: 'link', disabled: true, onClick: () => save() }, 'save');
+        /** the server copy the textarea started from */
         let saved = '';
         let shownFor = '';
+        let changedOnDisk = false;
 
         const setStatus = (text: string, className = 'dim') => {
             status.textContent = text;
             status.className = className;
         };
 
+        const unsaved = () => getState().pendingReadme !== null;
+
+        const showUnsaved = () => {
+            if (!unsaved()) changedOnDisk = false;
+            saveButton.disabled = !unsaved();
+            if (!unsaved()) setStatus('');
+            else if (changedOnDisk) setStatus('changed on disk: saving overwrites it', 'error');
+            else setStatus('unsaved changes');
+        };
+
         const save = async () => {
-            const target = getState().puzzle;
-            if (!target) return;
+            const text = getState().pendingReadme;
+            const key = shownFor;
+            if (text === null) return;
             try {
-                await api.saveReadme(target, textarea.value);
-                saved = textarea.value;
-                saveButton.disabled = true;
-                setStatus('saved', 'ok');
+                await actions.saveReadme();
+                if (key === shownFor) {
+                    saved = text;
+                    changedOnDisk = false;
+                }
                 await actions.refreshDetail();
+                if (!unsaved()) setStatus('saved', 'ok');
             } catch (error) {
                 setStatus(error instanceof Error ? error.message : String(error), 'error');
             }
         };
 
-        textarea.addEventListener('input', () => {
-            saveButton.disabled = textarea.value === saved;
-            setStatus(textarea.value === saved ? '' : 'unsaved changes');
-        });
+        textarea.addEventListener('input', () => actions.setPendingReadme(textarea.value === saved ? null : textarea.value));
 
         textarea.addEventListener('keydown', (event) => {
             if ((event.metaKey || event.ctrlKey) && event.key === 's') {
@@ -71,21 +82,23 @@ export const readmePanel: PanelDefinition = {
         );
 
         const render = () => {
-            const { puzzle, detail } = getState();
+            const { puzzle, detail, pendingReadme } = getState();
+            // while a puzzle loads the text on screen is not its readme yet, so it must not be edited as if it were
+            textarea.readOnly = !detail;
             if (!detail) return;
             const key = refKey(puzzle);
             const content = detail.readme ?? '';
-            // don't clobber an in-progress edit of the same puzzle unless the server copy changed underneath (e.g. profile ran)
-            if (key === shownFor && textarea.value !== saved && content === saved) return;
+            // unsaved text is never replaced; when the server copy changed underneath it (e.g. profile ran elsewhere) say so instead
+            changedOnDisk = pendingReadme !== null && key === shownFor && (changedOnDisk || content !== saved);
+            const text = pendingReadme ?? content;
+            if (textarea.value !== text) textarea.value = text;
             shownFor = key;
             saved = content;
-            textarea.value = content;
-            saveButton.disabled = true;
-            setStatus('');
+            showUnsaved();
         };
 
-        const unsubscribe = subscribe(render, ['detail']);
+        const unsubscribes = [subscribe(render, ['detail']), subscribe(showUnsaved, ['pendingReadme'])];
         render();
-        return { dispose: unsubscribe };
+        return { dispose: () => unsubscribes.forEach((fn) => fn()) };
     },
 };

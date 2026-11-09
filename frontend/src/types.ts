@@ -65,6 +65,7 @@ export interface PuzzleSummary extends PuzzleStatus {
     title: string | null;
     stars: number;
     path: string;
+    repositoryUrl: string | null;
 }
 
 export interface AnswerRow {

@@ -6,7 +6,7 @@
  */
 
 import { findElement, type HtmlNode, parseHtml, textOf } from '../html.ts';
-import { MissingCredentialError, type Provider, type ProviderContext, range } from './mod.ts';
+import { fetchTimeout, MissingCredentialError, type Provider, type ProviderContext, range, RejectedCredentialError } from './mod.ts';
 
 const BASE = 'https://challenges.aquaq.co.uk';
 const GROUP = 'challenges';
@@ -23,7 +23,7 @@ const fetchPage = (context: ProviderContext, puzzle: number): Promise<string | n
     const cached = pages.get(key);
     if (cached && Date.now() - cached.at < 15_000) return cached.page;
     const page = (async () => {
-        const response = await fetch(`${BASE}/challenge/${puzzle}`, { headers: headers(context) });
+        const response = await fetch(`${BASE}/challenge/${puzzle}`, { headers: headers(context), signal: fetchTimeout() });
         if (!response.ok || response.url.includes('/login')) return null;
         return await response.text();
     })();
@@ -70,7 +70,7 @@ const serialize = (node: HtmlNode, inPre = false): string => {
 
 /** every challenge on the public front page as number -> title */
 const fetchIndex = async (context: ProviderContext): Promise<Map<number, string>> => {
-    const response = await fetch(BASE, { headers: { 'User-Agent': context.userAgent } });
+    const response = await fetch(BASE, { headers: { 'User-Agent': context.userAgent }, signal: fetchTimeout() });
     if (!response.ok) throw new Error(`${BASE} answered ${response.status}`);
     const challenges = new Map<number, string>();
     for (const match of (await response.text()).matchAll(/<a\b[^>]*href="\/challenge\/(\d+)"[^>]*>([\s\S]*?)<\/a>/g)) {
@@ -109,8 +109,12 @@ export const aquaq: Provider = {
 
     async fetchInputs(context, _group, puzzle) {
         if (!context.session) throw new MissingCredentialError(aquaq);
-        const response = await fetch(`${BASE}/challenge/${puzzle}/input.txt`, { headers: headers(context) });
-        if (!response.ok || response.url.includes('/login')) {
+        const response = await fetch(`${BASE}/challenge/${puzzle}/input.txt`, { headers: headers(context), signal: fetchTimeout() });
+        // without a valid cookie the site redirects to its login page
+        if (response.url.includes('/login')) {
+            throw new RejectedCredentialError(`could not fetch the input for challenge ${puzzle}: the session cookie is probably expired or wrong`);
+        }
+        if (!response.ok) {
             throw new Error(
                 `could not fetch the input for challenge ${puzzle}: ${response.status} ${response.statusText} (the session cookie is probably expired or wrong)`,
             );

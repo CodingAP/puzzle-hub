@@ -88,6 +88,17 @@ export class MissingCredentialError extends Error {
     }
 }
 
+/** thrown when a site turns the stored credential down (expired, mistyped): asking it for anything else will fail the same way */
+export class RejectedCredentialError extends Error {
+    constructor(message: string) {
+        super(message);
+        this.name = 'RejectedCredentialError';
+    }
+}
+
+/** goes on every request to a site, so a stalled site fails the request instead of hanging whatever waits for it */
+export const fetchTimeout = (): AbortSignal => AbortSignal.timeout(20_000);
+
 export const range = (from: number, to: number): number[] => Array.from({ length: Math.max(0, to - from + 1) }, (_, index) => from + index);
 
 const PROVIDERS: Record<string, Provider> = {

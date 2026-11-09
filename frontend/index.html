@@ -12,7 +12,8 @@
         <link rel="shortcut icon" href="/static/favicon/favicon.ico">
 
         <!-- the full dockview build injects its own stylesheet at runtime (the esm build ships without css) -->
-        <script src="https://cdn.jsdelivr.net/npm/dockview-core@8.8.3/dist/dockview-core.min.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/dockview-core@8.8.3/dist/dockview-core.min.js"
+            integrity="sha384-9yO/iRbQ/2jadvRhHd0ZvZkYnmtwRHce1Xto9WOUKemkNcKX6WhKsXo+17FNiVOM" crossorigin="anonymous"></script>
         <link rel="stylesheet" href="/static/styles.css">
 
         <!-- apply the theme that was last on screen before the first paint so there is no flash of the default colours -->
@@ -39,7 +40,8 @@
                 ),
         };
         </script>
-        <script src="https://cdn.jsdelivr.net/npm/monaco-editor@0.52.2/min/vs/loader.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/monaco-editor@0.52.2/min/vs/loader.js"
+            integrity="sha384-pHG02SG8pId94Np3AbPmBEJ1yPqaH0IkJGLSNGXYmuGhkazT8Lr/57WYpbkGjJtu" crossorigin="anonymous"></script>
         <script>
         require.config({ paths: { vs: window.MONACO_CDN + '/vs' } });
         </script>

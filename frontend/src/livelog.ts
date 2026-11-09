@@ -20,10 +20,22 @@ export const createLiveLog = (): LiveLog => {
     const wrapper = h('div', { className: 'live-log-wrapper' }, pre);
     let lines = 0;
     let follow = true;
+    /** lines waiting for the next frame: a chatty solution prints thousands between two paints */
+    let buffered: string[] = [];
+    let frame = 0;
 
     wrapper.addEventListener('scroll', () => {
         follow = wrapper.scrollTop + wrapper.clientHeight >= wrapper.scrollHeight - 8;
     });
+
+    /** one dom update and one scroll for everything that arrived since the last frame */
+    const flush = () => {
+        frame = 0;
+        pre.append(...buffered.map((line, index) => document.createTextNode((index || pre.childNodes.length ? '\n' : '') + line)));
+        buffered = [];
+        while (pre.childNodes.length > MAX_LINES) pre.removeChild(pre.firstChild!);
+        if (follow) wrapper.scrollTop = wrapper.scrollHeight;
+    };
 
     return {
         element: wrapper,
@@ -32,11 +44,14 @@ export const createLiveLog = (): LiveLog => {
         },
         append(line) {
             lines++;
-            pre.append(document.createTextNode((pre.childNodes.length ? '\n' : '') + line));
-            while (pre.childNodes.length > MAX_LINES) pre.removeChild(pre.firstChild!);
-            if (follow) wrapper.scrollTop = wrapper.scrollHeight;
+            buffered.push(line);
+            if (buffered.length > MAX_LINES) buffered.shift(); // older ones would be dropped from the pane anyway
+            if (!frame) frame = requestAnimationFrame(flush);
         },
         clear() {
+            if (frame) cancelAnimationFrame(frame);
+            frame = 0;
+            buffered = [];
             pre.replaceChildren();
             lines = 0;
             follow = true;

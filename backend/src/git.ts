@@ -4,6 +4,7 @@
  * commits a puzzle's files in its source repository and pushes them, so profiling a solution also publishes it
  */
 
+import { closeDatabase } from './db.ts';
 import { exists } from './fs.ts';
 import { puzzlePaths, type Source } from './sources.ts';
 
@@ -53,9 +54,13 @@ export const publishPuzzle = async (source: Source, group: string, puzzle: numbe
 
     let push = await git(source, 'push', '--quiet');
     if (!push.ok && /rejected|fetch first|non-fast-forward/i.test(push.out)) {
+        // the pull replaces the data file, and a handle to the old one can no longer write: let go of it before, and
+        // again after in case a request opened the file while git was at work
+        closeDatabase(source);
         const rebase = await git(source, 'pull', '--rebase', '--autostash', '--quiet');
+        if (!rebase.ok) await git(source, 'rebase', '--abort');
+        closeDatabase(source);
         if (!rebase.ok) {
-            await git(source, 'rebase', '--abort');
             return {
                 committed: true,
                 pushed: false,

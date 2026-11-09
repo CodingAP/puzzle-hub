@@ -58,7 +58,11 @@ export class Router {
             pathMatched = true;
             if (route.method !== request.method) continue;
             const params: Params = {};
-            for (const [key, value] of Object.entries(match.pathname.groups)) params[key] = decodeURIComponent(value ?? '');
+            try {
+                for (const [key, value] of Object.entries(match.pathname.groups)) params[key] = decodeURIComponent(value ?? '');
+            } catch {
+                return null; // a malformed percent-escape names nothing that exists
+            }
             return { handler: route.handler, params };
         }
         return pathMatched ? json({ error: 'method not allowed' }, 405) : null;

@@ -43,30 +43,38 @@ const hasColumn = (database: DatabaseSync, table: string, column: string): boole
  * the advent-of-code-only tool stored year/day; move that data into the generic tables once
  */
 const migrateLegacy = (database: DatabaseSync) => {
-    if (tableExists(database, 'runs') && hasColumn(database, 'runs', 'year')) {
-        database.exec(`alter table runs rename to runs_legacy`);
-    }
-    createSchema(database);
-    if (tableExists(database, 'puzzles')) {
-        database.exec(`
-            insert or ignore into titles (grp, puzzle, title, created)
-                select year, cast(day as integer), title, created from puzzles where title != 'no title available!';
-            drop table puzzles;
-        `);
-    }
-    if (tableExists(database, 'puzzle_answers')) {
-        database.exec(`
-            insert into answers (grp, puzzle, part, answer, correct, created)
-                select year, cast(day as integer), cast(part as integer), answer, result, created from puzzle_answers order by answer_id;
-            drop table puzzle_answers;
-        `);
-    }
-    if (tableExists(database, 'runs_legacy')) {
-        database.exec(`
-            insert into runs (grp, puzzle, part, answer, time_ms, iterations, success, error, created)
-                select year, cast(day as integer), cast(part as integer), answer, time_ms, iterations, success, error, created from runs_legacy order by run_id;
-            drop table runs_legacy;
-        `);
+    // one transaction, so a crash between a copy and its drop cannot leave rows to be copied a second time
+    database.exec(`begin`);
+    try {
+        if (tableExists(database, 'runs') && hasColumn(database, 'runs', 'year')) {
+            database.exec(`alter table runs rename to runs_legacy`);
+        }
+        createSchema(database);
+        if (tableExists(database, 'puzzles')) {
+            database.exec(`
+                insert or ignore into titles (grp, puzzle, title, created)
+                    select year, cast(day as integer), title, created from puzzles where title != 'no title available!';
+                drop table puzzles;
+            `);
+        }
+        if (tableExists(database, 'puzzle_answers')) {
+            database.exec(`
+                insert into answers (grp, puzzle, part, answer, correct, created)
+                    select year, cast(day as integer), cast(part as integer), answer, result, created from puzzle_answers order by answer_id;
+                drop table puzzle_answers;
+            `);
+        }
+        if (tableExists(database, 'runs_legacy')) {
+            database.exec(`
+                insert into runs (grp, puzzle, part, answer, time_ms, iterations, success, error, created)
+                    select year, cast(day as integer), cast(part as integer), answer, time_ms, iterations, success, error, created from runs_legacy order by run_id;
+                drop table runs_legacy;
+            `);
+        }
+        database.exec(`commit`);
+    } catch (error) {
+        database.exec(`rollback`);
+        throw error;
     }
 };
 
@@ -115,9 +123,23 @@ export const getDatabase = (source: Source): DatabaseSync => {
     const cached = databases.get(source.dataPath);
     if (cached) return cached;
     const database = new DatabaseSync(source.dataPath);
-    migrateLegacy(database);
+    try {
+        migrateLegacy(database);
+    } catch (error) {
+        database.close(); // not cached, so nothing else would ever close it
+        throw error;
+    }
     databases.set(source.dataPath, database);
     return database;
+};
+
+/**
+ * lets go of a source's database so the next use opens the file again (a git pull replaces the file, and the handle
+ * to the old one can no longer write)
+ */
+export const closeDatabase = (source: Source): void => {
+    databases.get(source.dataPath)?.close();
+    databases.delete(source.dataPath);
 };
 
 const now = () => new Date().toISOString();

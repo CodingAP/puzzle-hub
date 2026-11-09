@@ -49,10 +49,13 @@ deno task serve                  # http://localhost:8000
 | `HUB_TITLE`, `HUB_CONTACT` | override the same fields |
 | `HUB_CONFIG` | path of `hub.json` (default: next to `deno.json`) |
 | `HUB_DATA_DIR` | where credentials are kept (default `./data`) |
-| `API_TOKEN` | when set, every API call needs `Authorization: Bearer <token>`; set it whenever the hub is reachable by anyone else |
+| `API_TOKEN` | when set, every API call needs `Authorization: Bearer <token>`; without it the API only answers the hub's own pages on localhost. Set it whenever the hub is reachable by anyone else |
+| `HOST` | address to listen on (default: `0.0.0.0` with `API_TOKEN`, `127.0.0.1` without) |
 | `PORT` | default 8000 |
 | `RUN_TIMEOUT_MS`, `RUN_MAX_MEMORY_MB` | limits for a solution run (120000 ms, 2048 MB) |
 | `SESSION_<PROVIDER>` | fallback site credential, e.g. `SESSION_ADVENT_OF_CODE`, for containers that cannot keep a data folder |
+
+Without `API_TOKEN` the hub only listens on localhost and only answers its own pages: requests from another site's pages, or under another host name, are refused. Pointing another browser or frontend at it (the "api base url" setting) needs a token; `HOST` alone (for example `0.0.0.0` in a container) opens the address but not the API to other origins.
 
 Site credentials (session cookies) are entered in the Settings panel or with `deno task cli credential`, and stored in `data/local.json`. They are never returned by the API and never written into a source repository.
 

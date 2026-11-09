@@ -6,7 +6,7 @@
  * that prints the answer.
  */
 
-import { env, hubRoot, type PartSpec, runnerChildPath } from './config.ts';
+import { env, type PartSpec, runnerChildPath } from './config.ts';
 import { insertRun } from './db.ts';
 import { clearDebugSession, DEBUG_PORT, disconnectDebugSession, newDebugToken, registerDebugSession } from './debug.ts';
 import { exists, join } from './fs.ts';
@@ -102,12 +102,6 @@ const sourceConfig = async (source: Source): Promise<string | null> => {
     }
     return null;
 };
-
-interface Child {
-    process: Deno.ChildProcess;
-    /** resolves with the results the child reported, if it speaks the json protocol */
-    parse(stdout: string): { results?: RunResults; error?: string };
-}
 
 /**
  * runs the solution for a puzzle in a subprocess with a timeout, streaming its console output
@@ -220,7 +214,8 @@ export const runPuzzle = async (source: Source, group: string, puzzle: number, o
                     ...(debug ? [] : ['--quiet']),
                     '--no-prompt',
                     `--v8-flags=--max-old-space-size=${env.runMaxMemoryMb()}`,
-                    `--allow-read=${source.root},${hubRoot}`,
+                    // the source only: the hub's own folder holds credentials, and the child's static imports need no permission
+                    `--allow-read=${source.root}`,
                     config ? `--config=${config}` : '--no-config',
                     ...(debug ? [`--inspect-brk=127.0.0.1:${DEBUG_PORT}`] : []),
                     runnerChildPath,
@@ -291,7 +286,7 @@ export const runPuzzle = async (source: Source, group: string, puzzle: number, o
         error = 'cancelled';
     } else if (timedOut && !complete) {
         error = `timed out after ${timeoutMs} ms`;
-    } else if (!exitOk && /out of memory|heap out of memory|OOM/i.test(logs)) {
+    } else if (!exitOk && /out of memory/i.test(logs)) {
         error = `ran out of memory (limit ${env.runMaxMemoryMb()} MB, RUN_MAX_MEMORY_MB to change)\n${kept.slice(-5).join('\n')}`;
     } else if (!exitOk || !complete) {
         error = failure ?? (kept.slice(-30).join('\n') || 'the solution produced no result');

@@ -6,7 +6,7 @@
 
 import { elementChildren, findElement, parseHtml, textOf } from '../html.ts';
 import { toMarkdown } from '../htmlmd.ts';
-import { MissingCredentialError, type Provider, type ProviderContext, range, type SubmitResult } from './mod.ts';
+import { fetchTimeout, MissingCredentialError, type Provider, type ProviderContext, range, RejectedCredentialError, type SubmitResult } from './mod.ts';
 
 const BASE = 'https://adventofcode.com';
 const FIRST_YEAR = 2015;
@@ -39,7 +39,7 @@ const explain = (
 ) => (status === 400 || status === 401 ? ' (the session cookie is probably expired or wrong)' : status === 404 ? ' (puzzle not released yet)' : '');
 
 const fetchPage = async (context: ProviderContext, group: string, puzzle: number): Promise<{ title: string; html: string } | null> => {
-    const response = await fetch(`${BASE}/${group}/day/${puzzle}`, { headers: headers(context) });
+    const response = await fetch(`${BASE}/${group}/day/${puzzle}`, { headers: headers(context), signal: fetchTimeout() });
     if (!response.ok) return null;
     const html = await response.text();
     const match = html.match(/<h2>--- Day \d+: (.+?) ---<\/h2>/);
@@ -82,7 +82,7 @@ export const adventOfCode: Provider = {
                 continue;
             }
             if (fetched++ > 0) await sleep(500); // be gentle: this is a dozen requests the first time, one afterwards
-            const response = await fetch(`${BASE}/${year}`, { headers: { 'User-Agent': context.userAgent } });
+            const response = await fetch(`${BASE}/${year}`, { headers: { 'User-Agent': context.userAgent }, signal: fetchTimeout() });
             const html = response.ok ? await response.text() : '';
             const days = [...new Set([...html.matchAll(new RegExp(`href="/${year}/day/(\\d+)"`, 'g'))].map((match) => Number(match[1])))].sort((a, b) => a - b);
             if (days.length) groups.push({ id, label: id, puzzles: days });
@@ -116,9 +116,10 @@ export const adventOfCode: Provider = {
 
     async fetchInputs(context, group, puzzle) {
         if (!context.session) throw new MissingCredentialError(adventOfCode);
-        const response = await fetch(`${BASE}/${group}/day/${puzzle}/input`, { headers: headers(context) });
+        const response = await fetch(`${BASE}/${group}/day/${puzzle}/input`, { headers: headers(context), signal: fetchTimeout() });
         if (!response.ok) {
-            throw new Error(`could not fetch input for ${group} day ${puzzle}: ${response.status} ${response.statusText}${explain(response.status)}`);
+            const message = `could not fetch input for ${group} day ${puzzle}: ${response.status} ${response.statusText}${explain(response.status)}`;
+            throw response.status === 400 || response.status === 401 ? new RejectedCredentialError(message) : new Error(message);
         }
         return { 0: await response.text() };
     },
@@ -147,6 +148,7 @@ export const adventOfCode: Provider = {
             method: 'POST',
             headers: headers(context),
             body: new URLSearchParams({ level: String(part), answer }),
+            signal: fetchTimeout(),
         });
         if (!response.ok) throw new Error(`submission failed: ${response.status} ${response.statusText}`);
         const text = await response.text();

@@ -21,7 +21,11 @@ const inline = (text: string): string => {
         return `@@CODE${codes.length - 1}@@`;
     });
     out = escapeHtml(out)
-        .replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, (_match, label: string, href: string) => `<a href="${href}" target="_blank" rel="noopener">${label}</a>`)
+        // only web links become anchors: the text can come from someone else's repository, and this html is assigned to innerHTML
+        .replace(
+            /\[([^\]]+)\]\(([^)\s]+)\)/g,
+            (match, label: string, href: string) => /^https?:\/\//i.test(href) ? `<a href="${href}" target="_blank" rel="noopener">${label}</a>` : match,
+        )
         .replace(/\*\*([^*]+)\*\*/g, '<em class="star">$1</em>')
         .replace(/\*([^*]+)\*/g, '<em>$1</em>');
     return out.replace(/@@CODE(\d+)@@/g, (_match, index: string) => codes[Number(index)]);
@@ -77,6 +81,7 @@ export const renderMarkdown = (markdown: string): string => {
                 if (!cells.every((cell) => /^:?-+:?$/.test(cell))) rows.push(cells);
                 i++;
             }
+            if (!rows.length) continue; // nothing but a separator row
             const [head, ...body] = rows;
             html.push(
                 `<table><thead><tr>${head.map((cell) => `<th>${inline(cell)}</th>`).join('')}</tr></thead><tbody>${

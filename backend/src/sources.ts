@@ -7,7 +7,7 @@
 
 import { type HubConfig, loadHubConfig } from './config.ts';
 import { discoveredGroups } from './discovery.ts';
-import { exists, join, readTextOrNull } from './fs.ts';
+import { join, readTextOrNull } from './fs.ts';
 import { getProvider, type GroupInfo, type Provider, type ProviderContext, providerIds } from './providers/mod.ts';
 import { getCredential } from './session.ts';
 
@@ -276,5 +276,3 @@ export const assertPuzzle = async (source: Source, group: string, puzzle: number
         throw new SourceError(`${source.name}${source.labels.group ? ` ${group}` : ''} has no ${source.labels.puzzle} ${puzzle}`);
     }
 };
-
-export const sourceHasData = (source: Source): Promise<boolean> => exists(source.dataPath);

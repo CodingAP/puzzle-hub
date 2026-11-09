@@ -215,19 +215,20 @@ const boot = async () => {
         if (puzzle && location.hash !== puzzleHash(puzzle)) history.replaceState(null, '', puzzleHash(puzzle));
     }, ['puzzle']);
 
-    // what a route means depends on the mounted sources, so look again once they are known (e.g. after the token is entered)
-    subscribe(() => applyRoute(), ['hub']);
-
     globalThis.addEventListener('hashchange', () => applyRoute());
     smallScreen.addEventListener('change', () => applyRoute());
 
     globalThis.addEventListener('beforeunload', (event) => {
-        if (getState().dirty) event.preventDefault();
+        const { dirty, pendingReadme } = getState();
+        if (dirty || pendingReadme !== null) event.preventDefault();
     });
 
     // which sources exist decides what a route means, so the hub loads first
     await actions.loadHub();
     await applyRoute();
+
+    // and when they change later (e.g. after the token is entered) the route is looked at again
+    subscribe(() => applyRoute(), ['hub']);
 };
 
 boot().catch((error) => {
