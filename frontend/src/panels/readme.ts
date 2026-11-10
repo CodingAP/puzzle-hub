@@ -62,6 +62,10 @@ export const readmePanel: PanelDefinition = {
             if ((event.metaKey || event.ctrlKey) && event.key === 's') {
                 event.preventDefault();
                 save();
+            } else if ((event.metaKey || event.ctrlKey) && event.key === 'y') {
+                // browsers only bind ctrl+y to redo on windows; bind it everywhere
+                event.preventDefault();
+                document.execCommand('redo');
             }
         });
 
