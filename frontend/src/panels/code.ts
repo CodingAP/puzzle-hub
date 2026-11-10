@@ -157,6 +157,8 @@ export const codePanel: PanelDefinition = {
                 if (!editor) {
                     editor = monaco.editor.create(host, { ...options(), theme: monacoThemeName(), language: 'typescript', value: '' });
                     editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => save());
+                    // monaco only binds ctrl+y to redo on windows; bind it everywhere
+                    editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyY, () => editor?.trigger('keyboard', 'redo', null));
                     decorations = editor.createDecorationsCollection();
                     // clicking the glyph margin toggles a breakpoint for the debugger panel
                     editor.onMouseDown((event) => {
