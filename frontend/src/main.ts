@@ -23,6 +23,7 @@ import { actions, firstPuzzle, getState, sourceInfo, subscribe } from './state.t
 import { activeThemeId, applyTheme, onSystemModeChange, resolveMode, SOURCE_THEMES } from './themes.ts';
 import { createTopbar } from './topbar.ts';
 import type { PuzzleRef } from './types.ts';
+import { initWisdom } from './wisdom.ts';
 import { Workspace } from './workspace.ts';
 
 type View = 'dashboard' | 'editor';
@@ -85,6 +86,8 @@ const renderSnowflakes = () => {
 };
 
 const boot = async () => {
+    const snowflakes = document.querySelector<HTMLElement>('#snowflakes');
+    if (snowflakes) initWisdom(snowflakes);
     const workspaceRoot = document.querySelector<HTMLElement>('#workspace')!;
     let workspace: Workspace | null = null;
     let view: View | null = null;
