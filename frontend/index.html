@@ -27,21 +27,12 @@
             document.documentElement.dataset.mode = 'dark';
         }
         </script>
-        <!-- monaco is loaded through its amd loader; workers must be wrapped in a blob because they come from another origin -->
+        <!-- monaco is loaded through its amd loader; editor.main sets up MonacoEnvironment itself, wrapping each worker in a blob so the cross-origin cdn works -->
         <script>
-        window.MONACO_CDN = 'https://cdn.jsdelivr.net/npm/monaco-editor@0.52.2/min';
-        window.MonacoEnvironment = {
-            getWorkerUrl: () =>
-                URL.createObjectURL(
-                    new Blob(
-                        [`self.MonacoEnvironment = { baseUrl: '${window.MONACO_CDN}/' }; importScripts('${window.MONACO_CDN}/vs/base/worker/workerMain.js');`],
-                        { type: 'text/javascript' },
-                    ),
-                ),
-        };
+        window.MONACO_CDN = 'https://cdn.jsdelivr.net/npm/monaco-editor@0.57.0/min';
         </script>
-        <script src="https://cdn.jsdelivr.net/npm/monaco-editor@0.52.2/min/vs/loader.js"
-            integrity="sha384-pHG02SG8pId94Np3AbPmBEJ1yPqaH0IkJGLSNGXYmuGhkazT8Lr/57WYpbkGjJtu" crossorigin="anonymous"></script>
+        <script src="https://cdn.jsdelivr.net/npm/monaco-editor@0.57.0/min/vs/loader.js"
+            integrity="sha384-jwxunh5pHKFzi60XobDcwOM7qnk4lSGpdBU/hNn9pUGp+ZUpaHJqadNLRF2k+jPu" crossorigin="anonymous"></script>
         <script>
         require.config({ paths: { vs: window.MONACO_CDN + '/vs' } });
         </script>

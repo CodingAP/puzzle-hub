@@ -11,7 +11,7 @@
 #       puzzle-hub
 #
 # site credentials (session cookies) are entered in the settings panel and stored in /data.
-FROM denoland/deno:2.9.7
+FROM denoland/deno:2.9.8
 
 # git + ssh so profiling can commit and push a puzzle from its repository (see backend/src/git.ts)
 USER root

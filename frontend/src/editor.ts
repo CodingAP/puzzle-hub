@@ -19,7 +19,7 @@ export type MonacoApi = typeof Monaco;
 let loading: Promise<MonacoApi> | null = null;
 
 const configure = (monaco: MonacoApi) => {
-    const ts = monaco.languages.typescript;
+    const ts = monaco.typescript; // moved out of monaco.languages in 0.55
     ts.typescriptDefaults.setCompilerOptions({
         target: ts.ScriptTarget.ESNext,
         module: ts.ModuleKind.ESNext,

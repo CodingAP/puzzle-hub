@@ -1,23 +1,40 @@
 {
   "version": "5",
   "specifiers": {
-    "npm:dockview-core@^8.8.3": "8.8.3",
-    "npm:monaco-editor@~0.52.2": "0.52.2"
+    "npm:dockview-core@^8.9.0": "8.9.0",
+    "npm:monaco-editor@0.57": "0.57.0"
   },
   "npm": {
-    "dockview-core@8.8.3": {
-      "integrity": "sha512-B9v+ibiXnZ5qgFJ7VEqMcNxpG0S5Y7Yx7uuGqqSyEFSC3bRZktUoXWo3HCrFp+QTdFmA1dJD1ye/gI4yL3hU2g=="
+    "@types/trusted-types@2.0.7": {
+      "integrity": "sha512-ScaPdn1dQczgbl0QFTeTOmVHFULt394XJgOQNoyVhZ6r2vLnMLJfBPd53SB52T/3G36VI1/g2MZaX0cwDuXsfw=="
     },
-    "monaco-editor@0.52.2": {
-      "integrity": "sha512-GEQWEZmfkOGLdd3XK8ryrfWz3AIP8YymVXiPHEdewrUq7mh0qrKrfHLNCXcbB6sTnMLnOZ3ztSiKcciFUkIJwQ=="
+    "dockview-core@8.9.0": {
+      "integrity": "sha512-qsXM+9wFik5WSEBq8x4KP041v19iM6cgSKVFrQpIgkJSXTM00+zEb66hI1kG3e+O7L4IKUfSziMUyZrofwetlg=="
+    },
+    "dompurify@3.4.15": {
+      "integrity": "sha512-EUBjM+B+lkDE41iE82DDSCfkoPGfXx8IxFxPMjNzm/Uk4xDet77rTN9wqlxlVg71kK7XGuUMv6wUxJUwwv+Xyw==",
+      "optionalDependencies": [
+        "@types/trusted-types"
+      ]
+    },
+    "marked@14.0.0": {
+      "integrity": "sha512-uIj4+faQ+MgHgwUW1l2PsPglZLOLOT1uErt06dAPtx2kjteLAkbsd/0FiYg/MGS+i7ZKLb7w2WClxHkzOOuryQ==",
+      "bin": true
+    },
+    "monaco-editor@0.57.0": {
+      "integrity": "sha512-5BkI9KGoqrNvBGUe15/QlZq3OooZ8WLg1AxTpaqHRCP3HNpzPPZKE2EDz8M7c+VRmCeUw1Brp4cx/PWm3kI/5A==",
+      "dependencies": [
+        "dompurify",
+        "marked"
+      ]
     }
   },
   "workspace": {
     "members": {
       "frontend": {
         "dependencies": [
-          "npm:dockview-core@^8.8.3",
-          "npm:monaco-editor@~0.52.2"
+          "npm:dockview-core@^8.9.0",
+          "npm:monaco-editor@0.57"
         ]
       }
     }
